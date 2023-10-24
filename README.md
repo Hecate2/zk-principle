@@ -1,6 +1,14 @@
-### Basic knowledge about exponent arithmetic
+Zero-knowledge proof (ZKP) is art of polynomials and exponents with modular arithmetic.
 
-a^b == 
+### Requirements
+
+English; maths at junior high school level
+
+### Basic knowledge
+
+#### exponent arithmetic
+
+a^b == a to the (power of) b ==
 
 ```python
 # a**b
@@ -15,6 +23,12 @@ return result
 a^(bc) == (a^b)^c == (a^c)^b. We may often skip between a^(bc) and (a^c)^b
 
 (a^b)^c != a^(b^c)
+
+#### polynomial
+
+f(x) == c0 + c1x + c2x^2 + c3x^3 + ... + c_d x^degree(f)
+
+c0, c1, ... c_d are constants
 
 ### How to make sure that two polynomials are the same?
 
@@ -145,6 +159,7 @@ And the algorithm remains the same for other degrees x^0, x^2, x^3, ... . So for
   - the homomorphic encryption function *E(v)=g^v* (mod *n*)
 
 - Verifier
+  - Choose a random *r* and exponent *e*
   - Provide the array [*E(r), E(r^2), E(r^3), ..., E(r^*degree*(t))*] (mod *n*) to the prover.
     - This is just [g^r^1, g^(r^2), ... , g^(r^degree(t))] (mod *n*)
   - Provide exponentially shifted values [*E(r)^e, E(r^2)^e, E(r^3)^e, ..., E(r^*degree*(t))^e*] to the prover
@@ -156,8 +171,9 @@ And the algorithm remains the same for other degrees x^0, x^2, x^3, ... . So for
   - Compute *E(s(r^e))* using the exponentially shifted input, and return it to the verifier.
     - E(s(r^e)) == g^s(r^e) == (g^c0)(g^c1^(r^e)(g^c2^r^2^e)(g^c3^r^3^e)...(g^c_d^r^degree(s)^e)
     - Also E(s(r^e)) == g^(e(c0+c1x+c2x^2+c3x^3+...+c_d x^(degree(s)))) == g^(s(r))^e
-    - meaning that **E(s(r^e)) == g^(s(r))^e == E(s(r))^e**
+    - meaning that there should be **E(s(r^e)) == g^(s(r))^e == E(s(r))^e**
 - Verifier
+  - Check whether E(p(r)) == E(t(r)s(r)).
   - Check whether E(s(r))^e == E(s(r^e)). This means that the prover is always providing an identical *s(x)*.
 
 For simplicity, we now name the exponentially shifted polynomials with an apostrophe ('). For example,
@@ -168,8 +184,27 @@ The prover now is going to provide the whole proof of 3 values:
 
 - E(p(r))==g^p(r), E(s(r))==g^s(r), E(s'(r))==g^s(r)^e==g^s(r^e)==g^s'(r)
 
+And the verifier checks 2 conditions:
+
+- E(p(r)) == E(t(r)s(r))
+- E(s(r))^e == E(s(r^e)) (or E(s'(r)))
+
 The problem is that the verifier may still extract some information from the proof. In the next section about real ZK, we will prevent the verifier from learning anything with arbitrary methods.
 
 ### ZK
 
+We have used exponents a lot in previous sections, because it is difficult to make log operations in modular arithmetic. Now, still, exponent is all you need. 
+
+For the original proof (E(p(r)), E(s(r)), E(s'(r))) returned by the prover, we ask the prover to pick another random exponent *d* (sorry but we are running out of English letters), and instead return (E(p(r))^d, E(s(r))^d, E(s'(r))^d, d) **(The prover should now additionally return *d* itself!)**. It is easy to show that the 2 verifying operations can still hold firm:
+
+- E(p(r))^d == g^(p(r)d) == g^(t(r)s(r)d) == E(t(r)s(r))^d
+- E(s(r))^de == g^(s(r^e))^d == E(s'(r))^d
+
+Now, though easy steps, the verifier know nothing about E(p(r)) or E(s(r)).
+
+### Non-interactive ZKP
+
+Till now we have got an **interactive** ZKP. This requires the verifier and the prover to stay online, and pick their own secret parameters, making the proof valid for this time only. Third-parties cannot trust the result of untrusted verifiers. Additionally, the verifier has to store the picked *r*, *e* and *t(r)*, making ZKP a stateful operation, dirtier to handle in computer systems. In practice, we still want a non-interactive ZKP system, and meanwhile make trustworthy proofs for everyone. 
+
 To be continued...
+
