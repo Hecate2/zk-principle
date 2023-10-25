@@ -206,5 +206,64 @@ Now, though easy steps, the verifier know nothing about E(p(r)) or E(s(r)).
 
 Till now we have got an **interactive** ZKP. This requires the verifier and the prover to stay online, and pick their own secret parameters, making the proof valid for this time only. Third-parties cannot trust the result of untrusted verifiers. Additionally, the verifier has to store the picked *r*, *e* and *t(r)*, making ZKP a stateful operation, dirtier to handle in computer systems. In practice, we still want a non-interactive ZKP system, and meanwhile make trustworthy proofs for everyone. 
 
-To be continued...
+Remember that the verifier should pick secret values *r* and *e*, and **have to remember 2 stateful values *e* and *t(r)* until the proof is verified**. The two values now needs to be encrypted to be stored in the public. On the first touch, we may think we can use exponents again, and homomorphically encrypt the two values. But unfortunately, **we cannot multiply two different homomorphically encrypted values** (we just used multiplication of a secret value with a public one). (Also **we cannot use a homomorphically encrypted value as an exponent**.) We will use another tool called **cryptographic pairing** (or **bilinear map**) for the purpose. In the following sections we are going to introduce the tools we need for it.
+
+#### Set
+
+A set is a quite primitive concept, meaning just a set of things. When a specific set is defined, we can tell whether a specific thing belongs to the set or not. A set can include an infinite count of things. For example, you can define set **Z** that includes all integers, and tell that the number 0.1 does not belong to the set. Sets can include tuples of "things". For example, you can define **R^3** as all tuples of **three** real numbers. Using the set **R^3** you can describe coordinates in a 3-D space.
+
+#### Map and function
+
+A **map** is also a serious primitive mathematical concept, which, when you query something from a source set (called "domain set"), picks **one or more things** from a target set (called "range set"). Just think of a real map that maps the coordinates on the surface of the earth, to things drawn on paper. When you pick a point on the surface of the earth, a real map tells you there is a parking lot, and also nice restaurant to try. 
+
+A **function** is just a map that intakes a tuple (including one or multiple "things") inputs picked from a set, and maps the tuple of inputs to **exactly one thing** in another set. For any given input, the output should be unique.
+
+In fact, arithmetic operations (multiplication or addition) are just functions like f(a,b) that map a tuple of two (or maybe more or less) values to the set of all numbers.
+
+But this time we are going to map not numbers, but points on a defined curve, to another point on the same curve, in the next subsection. We call this function "addition" on the curve. 
+
+#### Arithmetic Operations on elliptic curves (EC)
+
+Elliptic curves are those defined by equation y² = x³ + ax + b (just try to find all the points (x,y) that satisfy the equation), where a and b are constant parameters, and 4a³+27b² != 0. We are going to define a specific curve named BLS12–381, using the following equation:
+
+- **y²=x³+4** (mod p)
+
+with p= 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab (a very large 381-bit hexadecimal prime number)
+
+Now we are going to define an addition function that maps a tuple of 2 arbitrary points on the curve, to a third point on the curve. On elliptic curves like this, we can **pick points P, Q on the curve, and compute addition of points P+Q by drawing a straight line over P and Q, finding third point that intersects the curve, and return the third point's symmetry point about X axis. If P and Q are the same point on the curve, we draw a tangent line of the curve over P, and find the symmetry of the other intersection point.** When there is no extra intersection, the result is infinity. Finally, infinity adding any point returns infinity. You can find visual calculations in the following page:
+
+https://andrea.corbellini.name/ecc/interactive/reals-add.html
+
+Use a=0 and b=4 for our BLS12-381 curve. If you are wondering if the addition operation is truly well-defined, please visit math textbooks about group theory.
+
+Then we simply define multiplication of a number *n* and a point P as P+P+P+... for *n* counts of P.  
+
+#### EC with integer-only computation
+
+In practice, computers do not perform accurate calculation for real numbers. Therefore, we need integers, **simply by operating everything under modulo *p*. Here, given an integer *x* on a general curve y² = x³ + ax + b (mod p), we find *y* with square root under modulo p.** It can be proved that there is only 1 square root for every integer under modulo *p*. 
+
+- sqrt(x)==x^((p+1)/2) (mod p)  (The exponent is an integer, because *p* is a large prime which is odd.)
+
+Now let's calculate the result of P(xP, yP)+Q(xQ, yQ) == R(xR, yR) . We first calculate the slope *m* of line PQ:
+
+- m=(yP-yQ)/(xP-xQ) (mod p)  (Watch out: a mod p division returns integer)
+
+If P==Q, we need a tangent line, whose slope is
+
+- m=(3xP²+a)/(2yP) (mod p)
+
+Then
+
+- xR=(m²-xP-xQ) (mod p)  (Use Vieta theorem for cubic equations)
+- yR=yP+m(xR-xP)=yQ+m(xR-xQ) (mod p)
+
+Play with visual calculations in the following page:
+
+https://andrea.corbellini.name/ecc/interactive/modk-add.html
+
+By the way, we can count all the integer points in the curve defined under modulo *p*, and define the count of points as the **order** of the curve. In practice where *p* is very large, we define a point *G* called **generator** on a curve. By multiplying *G* by a fixed integer (mod *p*) for many times, we can cyclically return to G itself. During the many times of multiplication, we pass by many points, which build up a subgroup of (or maybe all of) all the possible points on the curve. We can also count the order of the subgroup. 
+
+#### Weil pairing
+
+Remember that we are going to multiply two encrypted values. To be pedantic, what we need is a 2-input function e(g^x, g^y) that intakes two encrypted values g^x and g^y (with the common base *g*), and output their **encrypted product** e(g,g)^(xy). With the notation, we mean that in the process of multiplication, we do not have to care for the meaning of e(g,g), and preferably the x and y can be extracted outside (the "**bilinear**" property). Then later (for example) we can verify for some a, b whether e(g^x, g^y)e(g^a, g^b) == e(g,g)^(xy+ab). Just keep reading if you get confused.
 
