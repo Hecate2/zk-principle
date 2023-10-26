@@ -329,12 +329,20 @@ Additionally, we use s'(r)=s(r)e. So the prover should return:
 - p(r)G1 == s(r)t(r)G1
 - s(r)G1
 - s'(r)G2 == s(r)eG2
-- no need for the prover to use his own exponent *d* for ZK, because we cannot find s(r) from s(r)G.
+- No need for the prover to use his own exponent *d* (not an exponent but a multiplier here) for ZK, because we cannot find s(r) from s(r)G.
+- If you do want to use your own *d*, just return p(r)dG1, s(r)dG1 and s'(r)dG2. You will see the verification step below that the verifier do not have to care if you have multiplied a *d*.
 
 Instead of checking p(r)==t(r)s(r) and E(s'(r))==E(s(r))^e, now we need to check:
 
 - f(p(r)G1, G2) == f(s(r)G1, t(r)G2)
 - f(G1, s'(r)G2) == f(s(r)G1, eG2)
+
+It does not matter whether the prover has used a private multiplier *d*. When *d* is used, we check:
+
+- f(p(r)dG1, G2) == f(s(r)dG1, t(r)G2)
+- f(G1, s'(r)dG2) == f(s(r)dG1, eG2)
+
+The verifier does not have to know the value of *d* in order to verify the proof.
 
 ### Trusted party setup
 
