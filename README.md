@@ -24,6 +24,8 @@ a^(bc) == (a^b)^c == (a^c)^b. We may often skip between a^(bc) and (a^c)^b
 
 (a^b)^c != a^(b^c)
 
+a^0 == 1 for any a
+
 #### polynomial
 
 f(x) == c0 + c1x + c2x^2 + c3x^3 + ... + c_d x^degree(f)
@@ -55,15 +57,11 @@ Evidently, the prover can generate a product *p(x)* like this:
 
 - *p(x) = t(x)s(x)*
 
-where
-
-- *s(x) = p(x)/t(x)*
-
 Therefore:
 
-- Verifier chooses a random number *r*, tells *r* to the prover, and locally calculates *t(r)*
+- Verifier chooses a random number *r*, locally calculates *t(r)*, and tells *r* to the prover
   - A calculation of polynomial at degree(*t*)
-- Prover calculates *p(r)* and *s(r) = p(r)/t(r)*, and gives *p(r)* and *s(r)* to the verifier.
+- Prover calculates *p(r)* and *s(r)*, and gives *p(r)* and *s(r)* to the verifier.
   - A calculation of 2 polynomials at degree(*p*) and degree(*t*), respectively
 - Verifier checks whether *p(r) == t(r)s(r)*
   - A simple multiplication of two numbers
@@ -120,11 +118,13 @@ Now we can happily run an algorithm like this:
 - Publicly known things:
   - a public polynomial *t(x)* (for the computation *p(x) = t(x)s(x)*)
   - the homomorphic encryption function *E(v)=g^v* (mod *n*)
-
+- degree(*s*) (we will omit that we publicly know degree(*s*) in later discussions)
+    - Evidently degree(*p*)==degree(*t*)degree(*s*), so degree(*p*) is also publicly known
+  
 - Verifier
   - Pick a random number *r*
-  - (For computational simplicity,) calculate encryptions of *r* for all powers, i.e. *E(r), E(r^2), E(r^3), ..., E(r*^degree*(t))*
-  - Provide the array [*E(r), E(r^2), E(r^3), ..., E(r^*degree*(t))*] to the prover
+  - (For computational simplicity,) calculate encryptions of *r* for all powers, i.e. *E(r), E(r^2), E(r^3), ..., E(r*^degree*(p))*
+  - Provide the array [*E(r), E(r^2), E(r^3), ..., E(r^*degree*(p))*] to the prover
   - Compute *t(r)* (will be used later)
 - Prover
   - Compute the polynomial *E(s(r))*. That is to calculate *s(r)* in the homomorphically encrypted field, using multiplication instead of addition.
@@ -138,7 +138,7 @@ Now we can happily run an algorithm like this:
 
 Unfortunately, we see that the verifier simply check whether ***E(p(r)) == (E(s(r)))^(t(r))***, where *E(p(r))* and *E(s(r))* are both returned by the prover. For now, the prover can still pick some arbitrary values *z_p* and *z_h* such that *z_p == (z_h)^t(r)*. We can repeat the proving algorithm for *d* times for *d==*degree*(s(r))* to make the proof reasonable, but who knows whether the prover had picked a polynomial *s(x)* with a higher degree than *d*? **We need to forbid arbitrary operations on *s(x)*, and make sure the *s(x)* provided by the prover is identical.**
 
-The solution is to ask the prover to keep performing the same arithmetic operations on an original value and another exponentially shifted value (at a random exponent *e* picked by the verifier and kept unknown to the prover). The verifier can keep checking whether the original and the shifted value differs only in the random exponent *e*. 
+The solution is to ask the prover to keep performing the same arithmetic operations on an original value and another exponentially shifted value (at a random exponent *e* picked by the verifier and kept unknown to the prover; *e* is also known as \alpha in other materials). The verifier can keep checking whether the original and the shifted value differs only in the random exponent *e*. The pair of two values acts like "**checksum**", with which you ensure that the prover does not cheat.
 
 This is what KEA will do. We are still going to use the property that **it is difficult to execute log operations in modular arithmetic**. 
 
@@ -160,10 +160,11 @@ And the algorithm remains the same for other degrees x^0, x^2, x^3, ... . So for
 
 - Verifier
   - Choose a random *r* and exponent *e*
-  - Provide the array [*E(r), E(r^2), E(r^3), ..., E(r^*degree*(t))*] (mod *n*) to the prover.
-    - This is just [g^r^1, g^(r^2), ... , g^(r^degree(t))] (mod *n*)
-  - Provide exponentially shifted values [*E(r)^e, E(r^2)^e, E(r^3)^e, ..., E(r^*degree*(t))^e*] to the prover
-    - This is [g^r^e, g^(r^2)^e, ... , g^(r^degree(t))^e] (mod *n*)
+  - Provide the array [*E(r), E(r^2), E(r^3), ..., E(r^*degree*(p))*] (mod *n*) to the prover.
+    - This is just [g^r^1, g^(r^2), ... , g^(r^degree(p))] (mod *n*)
+  - Provide exponentially shifted values [*E(1)^e, E(r)^e, E(r^2)^e, ..., E(r^*degree*(p))^e*] to the prover
+    - This is [g^e, g^r^e, g^(r^2)^e, ... , g^(r^degree(p))^e] (mod *n*)
+  - The two arrays provided by the verifier is called **common reference string (CRS)**
 - Prover
   - Compute the polynomial *E(s(r))* and return it to the verifier.
     - E(s(r)) == g^s(r) == (g^c0)(g^c1^r)(g^c2^r^2)(g^c3^r^3)...(g^c_d^r^degree(s))
@@ -182,33 +183,42 @@ For simplicity, we now name the exponentially shifted polynomials with an apostr
 
 The prover now is going to provide the whole proof of 3 values:
 
-- E(p(r))==g^p(r), E(s(r))==g^s(r), E(s'(r))==g^s(r)^e==g^s(r^e)==g^s'(r)
+- E(p(r))==g^p(r)
+- E(s(r))==g^s(r)
+- E(s'(r))==(g^s(r))^e==g^s(r^e)==g^s'(r)
 
 And the verifier checks 2 conditions:
 
 - E(p(r)) == E(t(r)s(r))
 - E(s(r))^e == E(s(r^e)) (or E(s'(r)))
 
-The problem is that the verifier may still extract some information from the proof. In the next section about real ZK, we will prevent the verifier from learning anything with arbitrary methods.
+Now the remaining problem is that the verifier may still extract some information from the proof. In the next section about real ZK, we will prevent the verifier from learning anything with arbitrary methods.
 
 ### ZK
 
 We have used exponents a lot in previous sections, because it is difficult to make log operations in modular arithmetic. Now, still, exponent is all you need. 
 
-For the original proof (E(p(r)), E(s(r)), E(s'(r))) returned by the prover, we ask the prover to pick another random exponent *d* (sorry but we are running out of English letters), and instead return (E(p(r))^d, E(s(r))^d, E(s'(r))^d, d) **(The prover should now additionally return *d* itself!)**. It is easy to show that the 2 verifying operations can still hold firm:
+For the original proof (E(p(r)), E(s(r)), E(s'(r))) returned by the prover, we ask the prover to pick another random exponent *d* (sorry but we are running out of English letters), and instead return
+
+- E(p(r))^d
+- E(s(r))^d
+- E(s'(r))^d
+- d **(The prover should now additionally return *d* itself!)**
+
+It is easy to show that the 2 verifying operations can still hold firm:
 
 - E(p(r))^d == g^(p(r)d) == g^(t(r)s(r)d) == E(t(r)s(r))^d
 - E(s(r))^de == g^(s(r^e))^d == E(s'(r))^d
 
 Now, though easy steps, the verifier know nothing about E(p(r)) or E(s(r)).
 
-### Non-interactive ZKP
+### Non-interactive ZKP: multiplying 2 encrypted values
 
-Till now we have got an **interactive** ZKP. This requires the verifier and the prover to stay online, and pick their own secret parameters, making the proof valid for this time only. Third-parties cannot trust the result of untrusted verifiers. Additionally, the verifier has to store the picked *r*, *e* and *t(r)*, making ZKP a stateful operation, dirtier to handle in computer systems. In practice, we still want a non-interactive ZKP system, and meanwhile make trustworthy proofs for everyone. 
+Till now we have got an **interactive** ZKP. This requires the verifier and the prover to stay online, and pick their own secret parameters, making the proof valid for this time only. Third-parties cannot trust the result of untrusted verifiers. Additionally, the verifier has to remember the picked *r*, *e* and *t(r)*, making ZKP a stateful operation, dirtier to handle in computer systems. In practice, we still want a non-interactive ZKP system, and meanwhile make trustworthy proofs for everyone. 
 
-Remember that the verifier should pick secret values *r* and *e*, and **have to remember 2 stateful values *e* and *t(r)* until the proof is verified**. The two values now needs to be encrypted to be stored in the public. On the first touch, we may think we can use exponents again, and homomorphically encrypt the two values. 
+Remember that the verifier should pick secret values *r* and *e*, and **have to remember 2 stateful values *e* and *t(r)* until the proof is verified, without revealing *r, t(r)* and *e* to the prover**. Now, to convice the public, *e* and *t(r)* needs to be encrypted and stored in the public. On the first touch, we may think we can use exponents again, and homomorphically encrypt the two values. 
 
-But unfortunately, **we cannot multiply two different homomorphically encrypted values** (we just used multiplication of a secret value with a public one). (Also **we cannot use a homomorphically encrypted value as an exponent**.). Consider that, E(p) and E(q) are usually in an extremely large range (remember that the modulus *n* is large; otherwise we can use brute force to find p and q). If we want to compute pq, we try p+p+p+... for q times in the raw number field, and actually multiply E(p) for E(q) times in the encrypted field, which is too slow to be computed.
+But unfortunately, we have to check E(p(r)) == E(t(r)s(r)) with *E(t(r)s(r)) == g^(t(r)s(r)) == (E(s(r)))^(t(r))*, where t(r) was kept as unencrypted secret by the verifier in interactive ZKP. However, now we need to store an encrypted t(r) in the public, and **we cannot multiply two different homomorphically encrypted values** (we just used multiplication of a secret value with a public one). Also **we cannot use a homomorphically encrypted value as an exponent**. Consider that, E(p) and E(q) are usually in an extremely large range (remember that the modulus *n* is large; otherwise we can use brute force to find p and q). If we want to compute pq, we try p+p+p+... for q times in the raw number field, and actually multiply E(p) for E(q) times in the encrypted field, which is too slow to be computed.
 
 We will use another tool called **cryptographic pairing** (or **bilinear map**) for the purpose. In the following sections we are going to introduce the tools we need for it.
 
@@ -279,9 +289,9 @@ Let's first compare our current demand with the previous case of homomorphic enc
 
 And now, remember that we are going to multiply two encrypted values. We are going to use EC for multiplying two encrypted values. For an EC with 2 generator points G1 and G2, what we do is to:
 
-- Find a pairing function f such that f(pG1, qG2) == f(G2, pqG1) == f(pqG2, G1)
+- **Find a pairing function f such that f(pG1, qG2) == f(G2, pqG1) == f(pqG2, G1)**
 
-In theory, we use Weil pairing, Tate pairing, or optimal Ate pairing in the details for function f. Visit some pedantic papers if you are interested in them. And fortunately, it is difficult to find p when you know pG1. 
+The pairing function is the core technology that I am unable to describe within a few tons of pages. In theory, we use Weil pairing, Tate pairing, or optimal Ate pairing in the details for function f. Visit some pedantic papers if you are interested in them. And fortunately, **it is difficult to find p when you know pG**. 
 
 In the actual world, we can find such an f in many cryptography programming libraries:
 
@@ -295,3 +305,38 @@ assert pairing(P, Q) == pairing(R, G1)
 ```
 
 In Ethereum there is a precompiled contract `ecPairing` which implements the pairing function on curve `alt_bn128`.
+
+#### Non-interactive ZKP with EC
+
+Recall that the verifier **has to remember 2 stateful values *e* (also known as \alpha) and the public polynomial *t(r)* until the proof is verified, without revealing *r* and *e* to the public.** *r* is a random value to evaluate the polynomial p(x)==s(x)t(x) with x==r, while *e* is used to exponentially shift the values, to form a tuple of "checksum" to prevent prover's cheating with arbitrary operations. Also the verifier should provide CRS to the public. In practice, we divide all the information above into 2 groups:
+
+- Verification key: E(t(r)) and E(1)^e (remembered by the public for verification)
+- Proving key (also known as evaluation key) (given to the prover to generate proof):
+  - [*E(r), E(r^2), E(r^3), ..., E(r^*degree*(p))*]
+  - and its exponentially shifted version [*E(r)^e, E(r^2)^e, ..., E(r^*degree*^e*] (excluding E(1)^e; it is stored publicly, so the prover still has access to it)
+
+In the interactive version we used E(v) = g^v (mod n). But for multiplication of two encrypted values, we encrypt everything with EC, and modify the encryption function to E(v)=vG (mod p), where G is a generator of the EC. For [E(r), E(r^2), ...] (the 1st item of proving key) we use G=G1, and for the exponentially shifted [E(r)^e, E(r^2)^e, ...] (the 2nd item of proving key) we use G=G2. For verification key we always use G=G2. **G1 and G2 can be the same point in some cases.**
+
+So the EC-version keys are:
+
+- Verification key: t(r)G2, eG2 (remembered by the public for verification)
+- Proving key (also known as evaluation key) (given to the prover to generate proof):
+  - [*rG1, (r^2)G1, (r^3)G1, ..., (r^*degree)G1]
+  - [*erG2, e(r^2)G2, ..., e(r^*degree)G2] (excluding eG2; it is stored publicly, so the prover still has access to it)
+
+Additionally, we use s'(r)=s(r)e. So the prover should return:
+
+- p(r)G1 == s(r)t(r)G1
+- s(r)G1
+- s'(r)G2 == s(r)eG2
+- no need for the prover to use his own exponent *d* for ZK, because we cannot find s(r) from s(r)G.
+
+Instead of checking p(r)==t(r)s(r) and E(s'(r))==E(s(r))^e, now we need to check:
+
+- f(p(r)G1, G2) == f(s(r)G1, t(r)G2)
+- f(G1, s'(r)G2) == f(s(r)G1, eG2)
+
+### Trusted party setup
+
+We still need to solve the problem of trust, because the verifier and the prover can plot together for a cheat. **The critical problem is that the verifier should not tell *r* and *e* to the prover.** As a verifier delegated by the public, at least you need a computing machine that is honest and trusted by the public. Otherwise all the proofs are not trusted. In practice, we use multi-party computation (MPC), involving many computers that you may choose to trust or not. We try to build a system that, when at least one verifier is honest (trusted by you), the final result is valid (for you). So here is how multiple parties can generate a single number that is used for computation, and then forgotten, immediately and honestly, **if at least one of the parties forget it**.
+
