@@ -206,13 +206,17 @@ Now, though easy steps, the verifier know nothing about E(p(r)) or E(s(r)).
 
 Till now we have got an **interactive** ZKP. This requires the verifier and the prover to stay online, and pick their own secret parameters, making the proof valid for this time only. Third-parties cannot trust the result of untrusted verifiers. Additionally, the verifier has to store the picked *r*, *e* and *t(r)*, making ZKP a stateful operation, dirtier to handle in computer systems. In practice, we still want a non-interactive ZKP system, and meanwhile make trustworthy proofs for everyone. 
 
-Remember that the verifier should pick secret values *r* and *e*, and **have to remember 2 stateful values *e* and *t(r)* until the proof is verified**. The two values now needs to be encrypted to be stored in the public. On the first touch, we may think we can use exponents again, and homomorphically encrypt the two values. But unfortunately, **we cannot multiply two different homomorphically encrypted values** (we just used multiplication of a secret value with a public one). (Also **we cannot use a homomorphically encrypted value as an exponent**.) We will use another tool called **cryptographic pairing** (or **bilinear map**) for the purpose. In the following sections we are going to introduce the tools we need for it.
+Remember that the verifier should pick secret values *r* and *e*, and **have to remember 2 stateful values *e* and *t(r)* until the proof is verified**. The two values now needs to be encrypted to be stored in the public. On the first touch, we may think we can use exponents again, and homomorphically encrypt the two values. 
 
-#### Set
+But unfortunately, **we cannot multiply two different homomorphically encrypted values** (we just used multiplication of a secret value with a public one). (Also **we cannot use a homomorphically encrypted value as an exponent**.). Consider that, E(p) and E(q) are usually in an extremely large range (remember that the modulus *n* is large; otherwise we can use brute force to find p and q). If we want to compute pq, we try p+p+p+... for q times in the raw number field, and actually multiply E(p) for E(q) times in the encrypted field, which is too slow to be computed.
+
+We will use another tool called **cryptographic pairing** (or **bilinear map**) for the purpose. In the following sections we are going to introduce the tools we need for it.
+
+#### Set (optional)
 
 A set is a quite primitive concept, meaning just a set of things. When a specific set is defined, we can tell whether a specific thing belongs to the set or not. A set can include an infinite count of things. For example, you can define set **Z** that includes all integers, and tell that the number 0.1 does not belong to the set. Sets can include tuples of "things". For example, you can define **R^3** as all tuples of **three** real numbers. Using the set **R^3** you can describe coordinates in a 3-D space.
 
-#### Map and function
+#### Map and function (optional)
 
 A **map** is also a serious primitive mathematical concept, which, when you query something from a source set (called "domain set"), picks **one or more things** from a target set (called "range set"). Just think of a real map that maps the coordinates on the surface of the earth, to things drawn on paper. When you pick a point on the surface of the earth, a real map tells you there is a parking lot, and also nice restaurant to try. 
 
@@ -240,7 +244,7 @@ Then we simply define multiplication of a number *n* and a point P as P+P+P+... 
 
 #### EC with integer-only computation
 
-In practice, computers do not perform accurate calculation for real numbers. Therefore, we need integers, **simply by operating everything under modulo *p*. Here, given an integer *x* on a general curve y² = x³ + ax + b (mod p), we find *y* with square root under modulo p.** It can be proved that there is only 1 square root for every integer under modulo *p*. 
+In practice, computers perform accurate calculation only for integers. For a practical integer-only curve, we simply **operate everything under modulo *p* (where *p* is a very large prime number)**. Here, given an integer *x* on a general curve y² = x³ + ax + b (mod p), we find *y* with **square root under modulo *p*.** It can be proved that there is only 1 square root result for each integer under modulo *p*. 
 
 - sqrt(x)==x^((p+1)/2) (mod p)  (The exponent is an integer, because *p* is a large prime which is odd.)
 
@@ -252,7 +256,7 @@ If P==Q, we need a tangent line, whose slope is
 
 - m=(3xP²+a)/(2yP) (mod p)
 
-Then
+Then (do not forget that R is the symmetric point about X axis of the 3rd intersection point)
 
 - xR=(m²-xP-xQ) (mod p)  (Use Vieta theorem for cubic equations)
 - yR=yP+m(xR-xP)=yQ+m(xR-xQ) (mod p)
@@ -261,9 +265,33 @@ Play with visual calculations in the following page:
 
 https://andrea.corbellini.name/ecc/interactive/modk-add.html
 
-By the way, we can count all the integer points in the curve defined under modulo *p*, and define the count of points as the **order** of the curve. In practice where *p* is very large, we define a point *G* called **generator** on a curve. By multiplying *G* by a fixed integer (mod *p*) for many times, we can cyclically return to G itself. During the many times of multiplication, we pass by many points, which build up a subgroup of (or maybe all of) all the possible points on the curve. We can also count the order of the subgroup. 
+By the way, we can count all the integer points in the curve defined under modulo *p*, and define the count of points as the **order** of the curve. In practice where *p* is very large, we define a point *G* called **generator** on a curve. By multiplying *G* by a fixed integer (mod *p*) for many times, we can cyclically return to G itself. During the many times of multiplication, we pass by many points, which build up a **subgroup** of (or maybe all of) all the possible points on the curve. We can also count the order of the subgroup. 
 
-#### Weil pairing
+Some EC has more than 1 generators, with which you can find different subgroups that do not intersect.
 
-Remember that we are going to multiply two encrypted values. To be pedantic, what we need is a 2-input function e(g^x, g^y) that intakes two encrypted values g^x and g^y (with the common base *g*), and output their **encrypted product** e(g,g)^(xy). With the notation, we mean that in the process of multiplication, we do not have to care for the meaning of e(g,g), and preferably the x and y can be extracted outside (the "**bilinear**" property). Then later (for example) we can verify for some a, b whether e(g^x, g^y)e(g^a, g^b) == e(g,g)^(xy+ab). Just keep reading if you get confused.
+And finally, for an elliptic curve E (mod *p*) with order *r*, let *k* be the minimum integer for which *r* is a divisor of *p*^*k* - 1. Such *k* is defined as the **embedding degree** of E (over *p*)
 
+If you cannot really understand the 2 paragraphs above, **just remember that order and embedding degree are numbers, and generator is an EC point**. You can view the generator as "1" in the sense of multiplication (in that subgroup) in an EC.
+
+#### Bilinear map / pairing
+
+Let's first compare our current demand with the previous case of homomorphic encryption, where we need to find functions f and E so that we can verify f(E(*p*), E(*q*)) == E(*p+q*). We used a public constant g, to encrypt the raw value *v* to E(*v*)=*g*^*v* (mod *n*), and execute multiplication E(*v*)*g*^*a* when we need addition to the raw *v+a*. That is, we used f==multiplication, and E(*v*)=*g*^*v*, to verify that *f(E(v), E(a)) == E(v+a)*. Also, modular arithmetic prevents *v* being extracted, when E(v)==*g*^*v* is known.
+
+And now, remember that we are going to multiply two encrypted values. We are going to use EC for multiplying two encrypted values. For an EC with 2 generator points G1 and G2, what we do is to:
+
+- Find a pairing function f such that f(pG1, qG2) == f(G2, pqG1) == f(pqG2, G1)
+
+In theory, we use Weil pairing, Tate pairing, or optimal Ate pairing in the details for function f. Visit some pedantic papers if you are interested in them. And fortunately, it is difficult to find p when you know pG1. 
+
+In the actual world, we can find such an f in many cryptography programming libraries:
+
+```python
+# pip install py_ecc
+from py_ecc.bn128 import G1, G2, pairing, multiply
+P = multiply(G2, 2)
+Q = multiply(G1, 3)
+R = multiply(G2, 2 * 3)
+assert pairing(P, Q) == pairing(R, G1)
+```
+
+In Ethereum there is a precompiled contract `ecPairing` which implements the pairing function on curve `alt_bn128`.
