@@ -317,7 +317,7 @@ Recall that the verifier **has to remember 2 stateful values *e* (also known as 
 
 In the interactive version we used E(v) = g^v (mod n). But for multiplication of two encrypted values, we encrypt everything with EC, and modify the encryption function to E(v)=vG (mod p), where G is a generator of the EC. For [E(r), E(r^2), ...] (the 1st item of proving key) we use G=G1, and for the exponentially shifted [E(r)^e, E(r^2)^e, ...] (the 2nd item of proving key) we use G=G2. For verification key we always use G=G2. **G1 and G2 can be the same point in some cases.**
 
-So the EC-version keys are:
+So the EC-version CRS keys are:
 
 - Verification key: t(r)G2, eG2 (remembered by the public for verification)
 - Proving key (also known as evaluation key) (given to the prover to generate proof):
@@ -348,3 +348,32 @@ The verifier does not have to know the value of *d* in order to verify the proof
 
 We still need to solve the problem of trust, because the verifier and the prover can plot together for a cheat. **The critical problem is that the verifier should not tell *r* and *e* to the prover.** As a verifier delegated by the public, at least you need a computing machine that is honest and trusted by the public. Otherwise all the proofs are not trusted. In practice, we use multi-party computation (MPC), involving many computers that you may choose to trust or not. We try to build a system that, when at least one verifier is honest (trusted by you), the final result is valid (for you). So here is how multiple parties can generate a single number that is used for computation, and then forgotten, immediately and honestly, **if at least one of the parties forget it**.
 
+The process is very simple. Each participant of the computation just provide his/her own random CRS ( [(r^i)G1], [e(r^i)G2] for *i* in [1, 2, ... degree]), and multiply it with the product of all CRS-es provided by others. If a single participant does not provide his/her *r* and *e* to the prover, the prover cannot find the product of all *r*-s and *e*-s, based on the EC points.
+
+We now reaches the goal of **succinct non-interactive argument of knowledge (SNARK)**. Congratulations on being a pro of **zk-SNARK**.
+
+### R1CS: Expressing a general practical problem with a polynomial
+
+What ZKP does is to prove that a secret polynomial s(x) does have value s(r) when x==r. But in practice, we need to prove that we know a secret solution to a public problem, without revealing the secret solution. We are now going to discuss how to translate the solution to a polynomial. 
+
+Let's start with an old mathematical joke. What is the number after the array 1, 3, 5, 7, (?)
+
+You may say the answer 9, but I think the answer is **114514**. This is because, if
+
+- *s*(*x*)=(114505/24)*x*^4−(572525/12)*x*^3+(4007675/24)*x*^2−(2862601/12)*x*+114504
+
+then s(1)==1, s(2)==3, s(3)==5, s(4)==7, s(5)==114514.
+
+How did I came up with such a crazy s(x)? Actually I used Lagrange's interpolating polynomial, with
+
+- *s*(*x*)=(*x*−2)(*x*−3)(*x*−4)(*x*−5)/((1−2)(1−3)(1−4)(1−5))+3(*x*−1)(*x*−3)(*x*−4)(*x*−5)/()(2−1)(2−3)(2−4)(2−5))+5(*x*−1)(*x*−2)(*x*−4)(*x*−5)/((3−1)(3−2)(3−4)(3−5))+7(*x*−1)(*x*−2)(*x*−3)(*x*−5)/((4−1)(4−2)(4−3)(4−5))+114514(*x*−1)(*x*−2)(*x*−3)(*x*−4)/((5−1)(5−2)(5−3)(5−4))
+
+Just unbracket everything, and you'll get the succinct yet crazy s(x). You can think about the original s(x) above to know how I **constrained** it with the array [1, 3, 5, 7, (?)]
+
+For ZKP, the core of the problem here is not that s(5)==9 or s(5)==114514, but that:
+
+- I know a secret polynomial s(x) such that s(1)==1, s(2)==3, s(3)==5, s(4)==7
+
+In other words, the **constraint** of the problem is the 4 beginning items of the array. And the constraint is always public (otherwise nobody knows about the problem being solved).
+
+To be continued...
