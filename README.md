@@ -32,6 +32,12 @@ f(x) == c0 + c1x + c2x^2 + c3x^3 + ... + c_d x^degree(f)
 
 c0, c1, ... c_d are constants
 
+#### roots of polynomial
+
+f(x) has root *a* means that f(a)==0. Also, f(x) has divisor (x-a).
+
+If a polynomial has 3 (and only 3) roots a, b and c, then f(x) has divisor (x-a)(x-b)(x-c).
+
 ### How to make sure that two polynomials are the same?
 
 We know that:
@@ -93,7 +99,7 @@ Here we still face the problem of the prover taking `log5` operation on the encr
 
 **It is difficult to execute log operations in modular arithmetic** (the property will be used very often in this tutorial). This means the prover cannot know whether the original raw number is 5 or 11 or 17, etc. In practice, we pick very large prime numbers. To be pedant-like, we define the homomophic encryption function for an original raw value *v* as:
 
-- E(v) = g^v mod n
+- E(v) = g^v mod n  (g is a public constant base)
 
 Note that we always apply `mod n` for the encrypted number E(v), but not for the original raw number `v`. In fact, we are not trying to apply any arithmetic operation on original numbers at all. We just encrypt `v` and then computed everything in the encrypted field. 
 
@@ -352,9 +358,11 @@ The process is very simple. Each participant of the computation just provide his
 
 We now reaches the goal of **succinct non-interactive argument of knowledge (SNARK)**. Congratulations on being a pro of **zk-SNARK**.
 
-### R1CS: Expressing a general practical problem with a polynomial
+### Representing a general practical problem with a polynomial
 
-What ZKP does is to prove that a secret polynomial s(x) does have value s(r) when x==r. But in practice, we need to prove that we know a secret solution to a public problem, without revealing the secret solution. We are now going to discuss how to translate the solution to a polynomial. 
+What ZKP does is to prove that a secret polynomial s(x) does have value s(r) when x==r. But in practice, we need to prove that we know a secret solution to a public problem, without revealing the secret solution. We are now going to discuss how to translate the problem and the solution to polynomials. 
+
+#### Identifying the constraint of a public problem
 
 Let's start with an old mathematical joke. What is the number after the array 1, 3, 5, 7, (?)
 
@@ -366,7 +374,7 @@ then s(1)==1, s(2)==3, s(3)==5, s(4)==7, s(5)==114514.
 
 How did I came up with such a crazy s(x)? Actually I used Lagrange's interpolating polynomial, with
 
-- *s*(*x*)=(*x*−2)(*x*−3)(*x*−4)(*x*−5)/((1−2)(1−3)(1−4)(1−5))+3(*x*−1)(*x*−3)(*x*−4)(*x*−5)/()(2−1)(2−3)(2−4)(2−5))+5(*x*−1)(*x*−2)(*x*−4)(*x*−5)/((3−1)(3−2)(3−4)(3−5))+7(*x*−1)(*x*−2)(*x*−3)(*x*−5)/((4−1)(4−2)(4−3)(4−5))+114514(*x*−1)(*x*−2)(*x*−3)(*x*−4)/((5−1)(5−2)(5−3)(5−4))
+- *s*(*x*)=(*x*−2)(*x*−3)(*x*−4)(*x*−5)/((1−2)(1−3)(1−4)(1−5))+3(*x*−1)(*x*−3)(*x*−4)(*x*−5)/((2−1)(2−3)(2−4)(2−5))+5(*x*−1)(*x*−2)(*x*−4)(*x*−5)/((3−1)(3−2)(3−4)(3−5))+7(*x*−1)(*x*−2)(*x*−3)(*x*−5)/((4−1)(4−2)(4−3)(4−5))+114514(*x*−1)(*x*−2)(*x*−3)(*x*−4)/((5−1)(5−2)(5−3)(5−4))
 
 Just unbracket everything, and you'll get the succinct yet crazy s(x). You can think about the original s(x) above to know how I **constrained** it with the array [1, 3, 5, 7, (?)]
 
@@ -374,6 +382,74 @@ For ZKP, the core of the problem here is not that s(5)==9 or s(5)==114514, but t
 
 - I know a secret polynomial s(x) such that s(1)==1, s(2)==3, s(3)==5, s(4)==7
 
-In other words, the **constraint** of the problem is the 4 beginning items of the array. And the constraint is always public (otherwise nobody knows about the problem being solved).
+In other words, the **constraint** of the problem is the 4 beginning items of the array. And the constraint is always public (otherwise nobody knows about the problem being solved). Then, using the ZKP process, I can prove that I know a secret number that follow the array 1, 3, 5, 7.
 
-To be continued...
+#### In programming: "proof of operation"
+
+Ideally we want polynomials to express computer programming codes, so that we can prove that with certain (secret or public) inputs and (secret or public) operations, we reach a result that meets some constraints.
+
+In a real computer program, we have operators and operands. They make up a computer function with basic operations like this:
+
+- output = left_operand **operator** right_operand
+
+In order to prove that the whole function is executed correctly, we just need to prove that **each operation is correct**. For example, consider a computer function that intakes `a`, `b` and `c` and returns `a*b*c`. This function involves 2 operations (where r1 and r2 are intermediate results):
+
+- a*b=r1
+- r1*c=r2
+
+We view these two operations **non-interfering**, and our target is to prove with polynomials that **each of the 2 operations are computed correctly**. 
+
+Generally, for a single basic computer operation, we try to map it into a polynomial equation like this:
+
+- o(x) = l(x) **operator** r(x) (for **operator** in (+,-,*,/))
+
+Note that modulo and comparison (>, <) are not directly supported, because we represent problems with polynomials, which cannot execute these operators. And we will find a polynomial
+
+- p(x) = l(x) **operator** r(x) - o(x)
+
+We'll directly use this p(x) for the ZKP p(x) = t(x)s(x) and prove that l(x) **operator** r(x) - o(x) = t(x)s(x) in later sections. In our example `a*b*c`, the operator is `*` (multiplication), which means p(x)=l(x)r(x)-o(x). 
+
+Also we may use non-arithmetic operators like `if else` in computer programs. For example, 
+
+```js
+    function calculate(uint256 a, uint256 b, bool w) public pure returns (uint256) {
+        if (w) {
+            return a * b;
+        } else {
+            return a + b;
+        }
+    }
+```
+
+We translate the Solidity code above into `w(ab)+(1-w)(a+b)`, where w==1 for true, and w==0 for false. Then you can try to respectively prove the correct execution of ab, or a+b, etc. Additionally, we can require **w*w == w for w to be either 0 or 1**. **Polynomials are (almost) Turing complete to represent any computer operation.** 
+
+#### R1CS: represent the function with a virtual circuit of gates, and then vectors, and then a polynomial
+
+R1CS is **rank-1 constraint system**. It is a triplet of vectors (a,b,c), as well as a solution vector S, representing the problem as **<a,S><b, S>=<c, S>**, where <\*, \*> is the dot product of two vectors. Now let's represent a function with a polynomial using R1CS.
+
+We'll use an example problem described by Vitalik Buterin in his blog: proving that you know the (secret) solution to the equation -*x*³+*x*+5==35. We break the operations into basic ones:
+
+- var1=x*x
+- var2=var1*x
+- var3=var2+x
+- out=var3+5
+
+This is constructing a virtual circuit of 4 gates. Each gate has 2 inputs and 1 output. Now we represent the variables in a solution vector S:
+
+- S=[1, x, out, var1, var2, var3]
+
+1 is always included in the vector in order to represent all kinds of constants. Now watch the first gate var1=x*x. 
+
+
+
+#### Interpolation: finding a polynomial that goes across given points
+
+Additionally, we need systematic methods to form a polynomial from points that it intersects, instead of using some crazy come-ups. Pedantically, we have the following systematic methods to go (just choose **one of** them):
+
+- Set of equations with unknowns (solve `d` equations for a polynomial across `d` points, with all coefficients of the polynomial unknown)
+- Lagrange polynomial (described in the example of [1, 3, 5, 7, (?)])
+- Newton polynomial
+- Neville's algorithm
+- FFT
+
+FFT is crucial for practical systems to be fast enough. We are not going to explain any of them further. Help yourself if you are interested.
