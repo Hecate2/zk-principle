@@ -2,7 +2,7 @@ Zero-knowledge proof (ZKP) is art of polynomials and exponents with modular arit
 
 ### Requirements
 
-English; maths at junior high school level
+English; maths at junior high school level; basic computer programming (arrays and `for` loops)
 
 ### Basic knowledge
 
@@ -423,22 +423,70 @@ Also we may use non-arithmetic operators like `if else` in computer programs. Fo
 
 We translate the Solidity code above into `w(ab)+(1-w)(a+b)`, where w==1 for true, and w==0 for false. Then you can try to respectively prove the correct execution of ab, or a+b, etc. Additionally, we can require **w*w == w for w to be either 0 or 1**. **Polynomials are (almost) Turing complete to represent any computer operation.** 
 
-#### R1CS: represent the function with a virtual circuit of gates, and then vectors, and then a polynomial
+#### R1CS: representing a computer function with a virtual circuit of gates, and then vectors
 
-R1CS is **rank-1 constraint system**. It is a triplet of vectors (a,b,c), as well as a solution vector S, representing the problem as **<a,S><b, S>=<c, S>**, where <\*, \*> is the dot product of two vectors. Now let's represent a function with a polynomial using R1CS.
+Here we are preparing another mathematical tool to finally express a computer function with polynomials. We'll use an example problem described by Vitalik Buterin in his blog: proving that you know the (secret) solution to the equation -*x*³+*x*+5==35. We break the operations into basic ones:
 
-We'll use an example problem described by Vitalik Buterin in his blog: proving that you know the (secret) solution to the equation -*x*³+*x*+5==35. We break the operations into basic ones:
+- x*x=var1
+- var1*x=var2
+- var2+x=var3
+- var3+5=out
 
-- var1=x*x
-- var2=var1*x
-- var3=var2+x
-- out=var3+5
-
-This is constructing a virtual circuit of 4 gates. Each gate has 2 inputs and 1 output. Now we represent the variables in a solution vector S:
+This is constructing a virtual circuit of 4 gates. Each gate has 2 inputs and 1 output. Now we represent all the variables related to the whole problem, in a solution vector S:
 
 - S=[1, x, out, var1, var2, var3]
 
-1 is always included in the vector in order to represent all kinds of constants. Now watch the first gate var1=x*x. 
+R1CS is **rank-1 constraint system**. It is a triplet of vectors a, b and c, as well as a solution vector S, representing a single operation in a single gate as **<a,S> * <b, S>=<c, S>**, where <\*, \*> is the dot product of two vectors (returning a number). Now let's represent a function with a polynomial using R1CS.
+
+1 is always included in the vector S in order to represent all kinds of constants. Now we are going to construct R1CS vectors a1, b1 and c1 for first gate var1=x*x. a1 and b1 are responsible for the inputs (which are both x), and c1 is responsible for the output of the gate.
+
+- a1=[0, 1, 0, 0, 0, 0]  (<a1,S> representing x)
+- b1=[0, 1, 0, 0, 0, 0]  (<b1,S> representing x)
+- c1=[0, 0, 0, 1, 0, 0]  (<c1,S> representing var1)
+
+In this way we express the 1st gate x\*x=var1 with **<a1,S><b1, S>=<c1, S>**. Similarly, for the 2nd gate var1*x=var2:
+
+- a2=[0, 0, 0, 1, 0, 0]
+- b2=[0, 1, 0, 0, 0, 0]
+- c2=[0, 0, 0, 0, 1, 0]
+
+In the 3rd gate var2+x=var3, things are a bit different. We were forced to use multiplication of numbers in the expression <a,S> ***** <b, S>=<c, S>, so we are going to apply addition through the dot product of vectors:
+
+- a3=[0, 1, 0, 0, 1, 0]  (<a3, S> representing var2+x)
+- b3=[1, 0, 0, 0, 0, 0]  (<b3, S> representing 1)
+- c3=[0, 0, 0, 0, 0, 1]
+
+And similarly for the 4th gate:
+
+- a4=[5, 0, 0, 0, 0, 1]
+- b4=[1, 0, 0, 0, 0, 0]
+- c4=[0, 0, 1, 0, 0, 0]
+
+Great. But by the way, we still have more concise methods to express the 4 multiplications of vector dot products. We are using a **matrix** (plural form: matrices), which is a 2-D array of numbers, made up of vectors. 
+
+```
+A=[          B=[          C=[
+	a1,          b1,          c1,
+	a2,          b2,          c2,          
+	a3,          b3,          c3,
+	a4,          b4,          c4,
+]            ]             ]
+```
+
+That is,
+
+```
+A=[                          B=[                          C=[
+	[0, 1, 0, 0, 0, 0],          [0, 1, 0, 0, 0, 0],          [0, 0, 0, 1, 0, 0],
+	[0, 0, 0, 1, 0, 0],          [0, 1, 0, 0, 0, 0],          [0, 0, 0, 0, 1, 0],
+	[0, 1, 0, 0, 1, 0],          [1, 0, 0, 0, 0, 0],          [0, 0, 0, 0, 0, 1],
+	[5, 0, 0, 0, 0, 1],          [1, 0, 0, 0, 0, 0],          [0, 0, 1, 0, 0, 0],
+]                            ]                            ]
+```
+
+Now **consider these 2-D arrays vertically in columns**. For example, the 2nd column of A represents the role that x plays in the whole gate. In other words, x has coefficient 1 in the 1st gate, and has coefficient 1 in the 4th gate. 
+
+#### Quadratic Arithmetic Program (QAP) form of R1CS: transforming vectors / matrices into polynomials
 
 
 
