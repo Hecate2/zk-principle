@@ -89,7 +89,7 @@ Homomorphic encryption allows us to perform arithmetic operations on encrypted n
 
 Then we decrypt `3125` with `log5` operation to recover `log5(3125) == 5 == 3+2`. Also we can make multiplications for raw numbers by multiple additions, which means multiple multiplications, or just power operations, on the encrypted numbers. Addition (and subtraction) and multiplication are enough for a raw number in a raw polynomial, because there is no division in a polynomial. 
 
-#### Modular arithmetic
+#### Modular arithmetic; Galois field
 
 Here we still face the problem of the prover taking `log5` operation on the encrypted number `5^3` which recovers `3`. In practice, we use **modular arithmetic** to prevent it. For simplicity, assume that we have a computer with its **unsigned integer ranging from only 0 to 6**. In other words, we compute everything with "modulo 7" if the result is greater than or equals 7. Now check how difficult it is to reveal the raw number:
 
@@ -102,6 +102,8 @@ Here we still face the problem of the prover taking `log5` operation on the encr
 - E(v) = g^v mod n  (g is a public constant base)
 
 Note that we always apply `mod n` for the encrypted number E(v), but not for the original raw number `v`. In fact, we are not trying to apply any arithmetic operation on original numbers at all. We just encrypt `v` and then computed everything in the encrypted field. 
+
+In practice, we name the field of numbers where we always play `mod n`, as finite field, or Galois field, or GF(n) in programming.
 
 #### Modular division
 
@@ -364,7 +366,9 @@ What ZKP does is to prove that a secret polynomial s(x) does have value s(r) whe
 
 #### Identifying the constraint of a public problem
 
-Let's start with an old mathematical joke. What is the number after the array 1, 3, 5, 7, (?)
+Let's start with an old mathematical joke of **Lagrange interpolation**:
+
+- What is the number after the array [1, 3, 5, 7, (?)]
 
 You may say the answer 9, but I think the answer is **114514**. This is because, if
 
@@ -376,13 +380,25 @@ How did I came up with such a crazy s(x)? Actually I used Lagrange's interpolati
 
 - *s*(*x*)=(*x*−2)(*x*−3)(*x*−4)(*x*−5)/((1−2)(1−3)(1−4)(1−5))+3(*x*−1)(*x*−3)(*x*−4)(*x*−5)/((2−1)(2−3)(2−4)(2−5))+5(*x*−1)(*x*−2)(*x*−4)(*x*−5)/((3−1)(3−2)(3−4)(3−5))+7(*x*−1)(*x*−2)(*x*−3)(*x*−5)/((4−1)(4−2)(4−3)(4−5))+114514(*x*−1)(*x*−2)(*x*−3)(*x*−4)/((5−1)(5−2)(5−3)(5−4))
 
-Just unbracket everything, and you'll get the succinct yet crazy s(x). You can think about the original s(x) above to know how I **constrained** it with the array [1, 3, 5, 7, (?)]
+Just unbracket everything (or use a [Lagrange polynomial calculator online](https://planetcalc.com/8680/)), and you'll get the succinct yet crazy s(x). You can think about the original s(x) above to know how I **constrained** it with the array [1, 3, 5, 7, (?)]
 
 For ZKP, the core of the problem here is not that s(5)==9 or s(5)==114514, but that:
 
 - I know a secret polynomial s(x) such that s(1)==1, s(2)==3, s(3)==5, s(4)==7
 
-In other words, the **constraint** of the problem is the 4 beginning items of the array. And the constraint is always public (otherwise nobody knows about the problem being solved). Then, using the ZKP process, I can prove that I know a secret number that follow the array 1, 3, 5, 7.
+The joke is that no restriction for the 5th number is provided at all. In other words, the **constraint** of the problem is the 4 beginning items of the array. And the constraint is always public (otherwise nobody knows about the problem being solved). Then, using the ZKP process, I can prove that I know a secret number that follow the array 1, 3, 5, 7.
+
+#### Interpolation: finding a polynomial that goes across given points
+
+We need systematic methods to form a polynomial from points that it intersects, instead of using some crazy come-ups. Pedantically, we have the following systematic methods to go (just choose **one of** them):
+
+- Set of equations with unknowns (solve `d` equations for a polynomial across `d` points, with all coefficients of the polynomial unknown)
+- Lagrange interpolation (described in the example of [1, 3, 5, 7, (?)])
+- Newton polynomial
+- Neville's algorithm
+- FFT
+
+FFT is crucial for practical systems to be fast enough. We are not going to explain any of these methods further. Help yourself if you are interested.
 
 #### In programming: "proof of operation"
 
@@ -401,15 +417,17 @@ We view these two operations **non-interfering**, and our target is to prove wit
 
 Generally, for a single basic computer operation, we try to map it into a polynomial equation like this:
 
-- o(x) = l(x) **operator** r(x) (for **operator** in (+,-,*,/))
+- o(x) = l(x) **operator** r(x) (for **operator** in (+,-,*,/, ...))
 
-Note that modulo and comparison (>, <) are not directly supported, because we represent problems with polynomials, which cannot execute these operators. And we will find a polynomial
+In the next subsection, we will find that **we only need**
 
-- p(x) = l(x) **operator** r(x) - o(x)
+- o(x) = l(x)r(x)
 
-We'll directly use this p(x) for the ZKP p(x) = t(x)s(x) and prove that l(x) **operator** r(x) - o(x) = t(x)s(x) in later sections. In our example `a*b*c`, the operator is `*` (multiplication), which means p(x)=l(x)r(x)-o(x). 
+In order to represent all kinds of operations. Note that modulo and comparison (>, <) are not directly supported, because we represent problems with polynomials, which cannot execute these operators. And we will find a polynomial
 
-Also we may use non-arithmetic operators like `if else` in computer programs. For example, 
+- p(x) = l(x)r(x) - o(x)
+
+We'll directly use this p(x) for the ZKP p(x) = t(x)s(x) and prove that l(x)r(x) - o(x) = t(x)s(x) in later sections. Also we may use non-arithmetic operators like `if else` in computer programs. For example, 
 
 ```js
     function calculate(uint256 a, uint256 b, bool w) public pure returns (uint256) {
@@ -436,21 +454,21 @@ This is constructing a virtual circuit of 4 gates. Each gate has 2 inputs and 1 
 
 - S=[1, x, out, var1, var2, var3]
 
-R1CS is **rank-1 constraint system**. It is a triplet of vectors a, b and c, as well as a solution vector S, representing a single operation in a single gate as **<a,S> * <b, S>=<c, S>**, where <\*, \*> is the dot product of two vectors (returning a number). Now let's represent a function with a polynomial using R1CS.
+R1CS is **rank-1 constraint system**. It is a triplet of vectors a, b and c, as well as a solution vector S, representing a single operation in a single gate as **<a, S> \* <b, S>=<c, S>**, where <V1, V2> is the dot product of two vectors V1 and V2 (returning a number instead of a vector). Now let's represent a function with a polynomial using R1CS.
 
 1 is always included in the vector S in order to represent all kinds of constants. Now we are going to construct R1CS vectors a1, b1 and c1 for first gate var1=x*x. a1 and b1 are responsible for the inputs (which are both x), and c1 is responsible for the output of the gate.
 
 - a1=[0, 1, 0, 0, 0, 0]  (<a1,S> representing x)
-- b1=[0, 1, 0, 0, 0, 0]  (<b1,S> representing x)
+- b1=[0, 1, 0, 0, 0, 0]  (<b1,S> also representing x)
 - c1=[0, 0, 0, 1, 0, 0]  (<c1,S> representing var1)
 
-In this way we express the 1st gate x\*x=var1 with **<a1,S><b1, S>=<c1, S>**. Similarly, for the 2nd gate var1*x=var2:
+In this way we express the 1st gate x\*x=var1 with **<a1,S><b1, S>=<c1, S>**. Similarly, for the 2nd gate var1*x=var2, we have **<a2,S><b2, S>=<c2, S>**:
 
 - a2=[0, 0, 0, 1, 0, 0]
 - b2=[0, 1, 0, 0, 0, 0]
 - c2=[0, 0, 0, 0, 1, 0]
 
-In the 3rd gate var2+x=var3, things are a bit different. We were forced to use multiplication of numbers in the expression <a,S> ***** <b, S>=<c, S>, so we are going to apply addition through the dot product of vectors:
+In the 3rd gate var2+x=var3, things are a bit different. We were forced to use multiplication of numbers in the expression <a,S> **\*** <b, S>=<c, S>, so we are going to apply addition through the dot product of vectors:
 
 - a3=[0, 1, 0, 0, 1, 0]  (<a3, S> representing var2+x)
 - b3=[1, 0, 0, 0, 0, 0]  (<b3, S> representing 1)
@@ -484,20 +502,87 @@ A=[                          B=[                          C=[
 ]                            ]                            ]
 ```
 
-Now **consider these 2-D arrays vertically in columns**. For example, the 2nd column of A represents the role that x plays in the whole gate. In other words, x has coefficient 1 in the 1st gate, and has coefficient 1 in the 4th gate. 
+Now **consider these 2-D arrays vertically in columns**. For example, the 1st column of A represents the constant `1` is only participating the 4th gate with coefficient 5. And the 2nd column of A represents the role that `x` plays in the whole circuit. In other words, `x` has coefficient 1 in the 1st gate, and has coefficient 1 in the 4th gate. 
 
 #### Quadratic Arithmetic Program (QAP) form of R1CS: transforming vectors / matrices into polynomials
 
+For the matrices A, B and C in the previous subsection, we are going to form polynomials for each column (which means for each variable). Consider that we arbitrarily select [1,2,3,4] as the values of the argument of each row, and correspondingly set a public polynomial T(x)=(x-1)(x-2)(x-3)(x-4). We are going to find S(x) and S(x) which satisfy P(x)=S(x)T(x) and P(x)==0 for x in [1,2,3,4]. 
 
+Now, for the 1st column of A, we need to find a polynomial that goes through the 4 points (1,0), (2,0), (3,0) and (4,5). Using Lagrange interpolation (described in the example of joke [1, 3, 5, 7, (?)]), along with modular arithmetic (Galois field) to avoid fractions, we get the polynomial as:
 
-#### Interpolation: finding a polynomial that goes across given points
+```python
+# Polynomial Ring in GF(41); the value 41 is arbitrarily selected
+sage: R41.<x> = PolynomialRing(F41)
+....: points = [(1,0), (2,0), (3,0), (4,5)]
+....: R41.lagrange_polynomial(points)
+....:
+35*x^3 + 36*x^2 + 16*x + 36
+# `x` here does not represent the `x` in -*x*³+*x*+5==35
+```
 
-Additionally, we need systematic methods to form a polynomial from points that it intersects, instead of using some crazy come-ups. Pedantically, we have the following systematic methods to go (just choose **one of** them):
+Evidently we get polynomials of degree <= 3, with <= 4 coefficients, if we input 4 points (representing 4 gates). Now we need to interpolate for each column of A, B and C, in order to get the corresponding **coefficient matrices** Lm, Rm and Om:
 
-- Set of equations with unknowns (solve `d` equations for a polynomial across `d` points, with all coefficients of the polynomial unknown)
-- Lagrange polynomial (described in the example of [1, 3, 5, 7, (?)])
-- Newton polynomial
-- Neville's algorithm
-- FFT
+```
+Lm=[                    Rm=[                    Om=[
+    [36 16 36 35]           [ 3 29 23 27]           [ 0  0  0  0]
+    [ 8 16  5 13]           [39 12 18 14]           [ 0  0  0  0]
+    [ 0  0  0  0]           [ 0  0  0  0]           [40 36 40  7]
+    [35 30 37 21]           [ 0  0  0  0]           [ 4 23 22 34]
+    [ 4 34 24 20]           [ 0  0  0  0]           [35 30 37 21]
+    [40 36 40  7]           [ 0  0  0  0]           [ 4 34 24 20]
+]                       ]                       ]
+```
 
-FFT is crucial for practical systems to be fast enough. We are not going to explain any of them further. Help yourself if you are interested.
+Here each row of a matrix stands for a single variable in 4 gates, and each column stands for a single gate. 
+
+***Watch out! I am going to provide the final proof here!***
+
+Consider that the initial problem constraint is -*x*³+*x*+5==35, and that I know a secret solution x=3. Now we construct the values of the solution vector S=[1, x, out, var1, var2, var3]. For each item of S, we substitute x for 3. Evidently, 
+
+- var1=x\*x=3\*3=9
+- var2=var1\*x=27
+- var3=var2+x=30
+- out=var3+5=35
+
+Therefore, the secret solution vector (given the secret solution x=3) is S=[1,3,35,9,27,30]. Remember that we should have **<a, S> \* <b, S>==<c, S>** if S is a correct solution. This means that **<A,S><B,S>==<C,S> for each row of A, B and C**. Now we make dot products of Lx=<S, Lm>, Rx=<S, Rm> and Ox=<S, Om> (in Galois field) for each column of Lm, Rm and Om. We get 3 polynomials:
+
+```python
+sage: # We define the solution vector also in the field
+....: S = vector(F41,[1, 3, 35, 9, 27, 30])
+....: # Create the Lx, Rx & Ox polynomial
+....: Lx = R41(list(S*Lm))
+....: Rx = R41(list(S*Rm))
+....: Ox = R41(list(S*Om))
+....: print("Lx = " + str(Lx))
+....: print("Rx = " + str(Rx))
+....: print("Ox = " + str(Ox))
+Lx = 29*x^3 + 18*x^2 + 36*x + 2
+Rx = 28*x^3 + 36*x^2 + 24*x + 38
+Ox = 37*x^3 + 37*x^2 + 17*x
+```
+
+Now we define the polynomial P=Lx\*Rx-Ox
+
+```python
+....: # New Polynomial P
+....: P = Lx*Rx - Ox
+....: print("P(x) = ", end="")
+P(x) = 33*x^6 + 31*x^5 + 15*x^4 + 20*x^3 + 25*x^2 + 5*x + 35
+```
+
+Additionally, remember that we chose [1,2,3,4] as the values of the argument of each row of A,B,C. This means that, if x is picked from [1,2,3,4], then we should have P(x)==LxRx-Ox==0, meaning that all operations are (probably) executed honestly. In other words, P(x) should be divided by T(x)=(x-1)(x-2)(x-3)(x-4). 
+
+You can now use all the interactive and non-interactive steps described in previous sections to ZKP that P(x)==S(x)T(x). Also, a simple operation of P(x)/T(x) can be executed, to check that P is divided by T without polynomial remainder.
+
+```python
+T = R41((x-1)*(x-2)*(x-3)*(x-4))
+S = P.quo_rem(T)  # polynomial quotient and remainder
+print("Quotient of P/T = ", end="")
+print(S[0])
+print("Remainder of P/T = ", end="")
+print(S[1])
+
+Quotient of P/T = 33*x^2 + 33*x + 10
+Remainder of P/T = 0
+```
+
