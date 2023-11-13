@@ -14,6 +14,38 @@ And let's watch some amazing arithmetic phenomena in such polynomials. Consider 
 
 In RS codes, we will record the coefficients of a polynomial over GF(a_large_prime_number).
 
+#### Extension fields
+
+For GF(P), its extension fields are simply GF(P^m), where P is a prime number, and m = 2,3,4,...
+
+Typically we are interested in P==2 in this material.
+
+#### Primitive polynomial of degree m over GF(P), as a generator of GF(P^m)
+
+A primitive polynomial p(x) is an irreducible polynomial of degree m over GF(P), which divides (x^(P^m -1))+1, but does not divide x^i +1 for i < P^m -1. Here we pick P=2.
+
+Remember the generator on an elliptic curve, which can generate many points (sometimes all of the points) on the curve by adding itself, and finally return to itself. Similarly, a primitive polynomial can construct P^m unique elements. 
+
+Now we test whether p(x)=x^4+x+1 is a primitive polynomial of degree m=4 over GF(P=2). First, we confirm that p(x) is irreducible. Given that f(x=a)==0 if f(x) has factor (x-a), we verify the factors of degree 1 in the following way:
+
+- f(0) == 0+0+1 == 1 != 0 . Therefore, (x-0) is not a factor of p(x). 
+- f(1) == 1 != 0 . (x-1) is not a factor
+
+We have finished testing all possible factors of degree 1, which are (x-1) and (x-0). Then we continue with all possible factors of degree 2:
+
+- x^2==(x+0)^2 . x^2 is not a factor because (x+0) is not a factor
+- x^2+1==(x+1)^2 . x^2+1 is not a factor because (x+1) is not a factor.
+- x^2+x==(x+0)(x+1), not a factor because neither (x+0) nor (x+1) is a factor.
+- (x^4+x+1)/(x^2+x+1) == x^2+x+1/(x^2+x+1) . Therefore, (x^2+x+1) is not a factor.
+
+For degree-3 factors, we know that we failed to find a factor of degree 1. Therefore, no factor of degree 3 can exist. We conclude that p(x)=x^4+x+1 is irreducible.
+
+Then we need to show that p(x) (of degree m=4) divides x^(2^m-1)+1==x^15+1. This had been shown in a previous subsection. Finally, we omit the steps to verify that p(x) does not divide x^i+1 for i<15, and directly declare that p(x) is a primitive polynomial of degree m=4. 
+
+Now let's generate GF(2^m)==GF(16) with p(x). 
+
+[To be continued...]
+
 #### Block codes; coding, error detection and correction
 
 In general communication, we use coding to represent raw information. Typically, we transmit the encoded symbols in a channel to send them to the decoder, and decode the symbols to get the raw information. However, in the transmission channel of the encoded symbols, there can be errors that tamper with the correct codes (due to malicious attacks or natural unreliability). 
