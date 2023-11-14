@@ -42,7 +42,7 @@ For degree-3 factors, we know that we failed to find a factor of degree 1. There
 
 Then we need to show that p(x) (of degree m=4) divides x^(2^m-1)+1==x^15+1. This had been shown in a previous subsection. Finally, we omit the steps to verify that p(x) does not divide x^i+1 for i<15, and directly declare that p(x) is a primitive polynomial of degree m=4. 
 
-Now let's generate GF(2^m)==GF(16) with p(x). Notice that the primitive polynomial serve as the modulus, instead of the "generator". For the generator a(x) (usually written as \alpha (x) in other materials), we simply pick a(x)=x. We generate the field by inserting 0 and a^0 (which is `1`), and multiplying a(x) with itself: 
+Now let's generate GF(2^m)==GF(16) with p(x). Notice that the primitive polynomial serve as the modulus, instead of the "generator". For the generator a(x) (usually written as \alpha (x) and called "primitive element" in other materials), we simply pick a(x)=x. We generate the field by inserting 0 and a^0 (which is `1`), and multiplying a(x) with itself: 
 
 - {0, a^0, a^1, a^2, a^3, a^4, ...} == {0, 1, x, x^2, x^3, x^4, ...}
 
@@ -125,4 +125,10 @@ a(x) is a generator of GF(P^m) discussed before. Just be aware that do not pick 
 Now it's time to decode the codeword r(x) after receiving it from an unreliable channel. We introduce a random error polynomial e(x) of degree n over GF(2), with no more than t coefficients being 1:
 
 - r(x)=c(x)+e(x)
+
+Then we compute r(x) mod g(x), in order to find e(x). Because c(x)==g(x)m(x), surely We have
+
+- (c(x)+e(x)) mod g(x) == e(x) mod g(x) (of degree 2t)
+
+Astonishingly, no practical method was given in the original paper of RS codes to recover e(x). We are using syndrome decoding, introduced by later papers from others, to get e(x).
 
