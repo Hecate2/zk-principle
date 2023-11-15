@@ -110,15 +110,16 @@ But when we talk about P-ary codes (without replacing P), we are emphasizing pri
 
 #### RS codes encoding
 
-A systematic RS codeword of length n includes k raw data bits, and n-k==2t parity bits, in order to recover errors no more than t bits. Given the raw message m(x) (of degree k-1), we generate the codeword c(x) with
+A systematic RS codeword of length n includes k raw data bits, and n-k==2t **parity-check** bits, in order to recover errors no more than t bits. Given the raw message m(x) (of degree k-1), we generate the codeword c(x) with
 
 - c(x)=g(x)m(x)  (over GF(2); do not mod p(x))
 
-where g(x) is a publicly known generator polynomial
+where g(x) is a publicly known generator polynomial. 
 
 - g(x)=(x-a)(x-a^2)...(x-a^(2t)) (of degree 2t, with the coefficient of x^(2t) as 1)
+- note that, for polynomials over GF(2), x-a is just x+a
 
-a(x) is a generator of GF(P^m) discussed before. Just be aware that do not pick an a(x) making g(x)==0. We create such g(x) in order to let g(x) have roots a, a^2, ..., a^(2t). With the coefficient of x^(2t) as 1 in g(x), we can copy the coefficients of m(x) to x^(n-1), x^(n-2), ..., x^(2t), making the codeword systematic. Now just transmit the (binary) coefficients of c(x) through an unreliable channel.
+a is a(x), a generator of GF(P^m) discussed before. In this way we require g(x) to have roots {a, a^2, ..., a^(2t)}. Just be aware that do not pick an a(x) making g(x)==0. With the coefficient of x^(2t) as 1 in g(x), we can copy the coefficients of m(x) to x^(n-1), x^(n-2), ..., x^(2t), making the codeword systematic. Now just transmit the (binary) coefficients of c(x) through an unreliable channel.
 
 #### RS codes decoding
 
@@ -130,5 +131,38 @@ Then we compute r(x) mod g(x), in order to find e(x). Because c(x)==g(x)m(x), su
 
 - (c(x)+e(x)) mod g(x) == e(x) mod g(x) (of degree 2t)
 
-Astonishingly, no practical method was given in the original paper of RS codes to recover e(x). We are using syndrome decoding, introduced by later papers from others, to get e(x).
+Astonishingly, no practical method was given in the original paper of RS codes to recover e(x). We are using **syndrome decoding**, introduced by later papers from others, to get e(x). The word "syndrome" means a group of signs and symptoms that occur together and characterize a particular abnormality.
 
+Assume that in a binary (15,9) RS coding, we have 15 bits in a word with 9 bits of raw information and 6 bits for parity check, which can recover t=3 bits of errors.
+
+- g(x)=(x-a)(x-a^2)...(x-a^6)=x^6+a^10x^5+a^14x^4+a^4x^3+a^6x^2+a^9x+a^6
+
+Additionally, let's use m(x)=a^11 x. Then we have c(x) and an assumed e(x) along with r(x)
+
+- c(x)=a^11x^7+a^8x^5+a^10x^4+a^4x^3+a^8x+a^12
+- e(x)=x^8+a^3x^2
+
+- r(x)=**x^8**+a^11x^7+a^8x^5+a^10x^4+a^4x^3+**a^3x^2**+a^8x+a^12
+
+Now let's compute the **syndrome components, defined as S_i=r(x=a^i), for i in {1, 2, ..., 2t==6}**. Remember that r(x) should have roots {a, a^2, ..., a^2t}. If there were no error in r(x), we should have S_i==0 for all i. But actually,
+
+- S1=r(a)==1
+- S2=r(a^2)==1
+- S3=r(a^3)==a^5
+- S4=r(a^4)==1
+- S5=r(a^5)==0
+- S6=r(a^6)==a^10
+
+Now we define
+
+- S(x)=S1+S2x+...+S_{2t}x^(2t-1)=a^10x5+x^3+a^5x^2+x+1
+
+Then we are going to find an error locator polynomial s(x) (often \sigma (x) in other materials). Divide x^(2t) by S(x) to get a quotient q(x) and a residue r1(x)
+
+- x^6 = (a^5 x)s(x) + (a^5x^4+a^10x^3+a^5x^2+a^5x); q1(x)=a^5x, r1(x)=a^5x^4+a^10x^3+a^5x^2+a^5x
+
+The degree of r1(x) is 4, greater than t=3. In this case we need to keep dividing S(x) by r1(x)
+
+- S(x)=(a^5x+a^10)r1 + 1; q2(x)=a^5x+a^10, r2(x)=1
+
+The degree of r2(x) is 0, less than t=3
