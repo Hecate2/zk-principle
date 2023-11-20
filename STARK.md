@@ -121,7 +121,7 @@ where g(x) is a publicly known generator polynomial.
 
 a is a(x), a generator of GF(P^m) discussed before. In this way we require g(x) to have roots {a, a^2, ..., a^(2t)}. Just be aware that do not pick an a(x) making g(x)==0. With the coefficient of x^(2t) as 1 in g(x), we can copy the coefficients of m(x) to x^(n-1), x^(n-2), ..., x^(2t), making the codeword systematic. Now just transmit the (binary) coefficients of c(x) through an unreliable channel.
 
-#### RS codes decoding
+#### RS codes decoding (Euclidean division algorithm)
 
 Now it's time to decode the codeword r(x) after receiving it from an unreliable channel. We introduce a random error polynomial e(x) of degree n over GF(2), with no more than t coefficients being 1:
 
@@ -139,12 +139,12 @@ Assume that in a binary (15,9) RS coding, we have 15 bits in a word with 9 bits 
 
 Additionally, let's use m(x)=a^11 x. Then we have c(x) and an assumed e(x) along with r(x)
 
-- c(x)=a^11x^7+a^8x^5+a^10x^4+a^4x^3+a^8x+a^12
-- e(x)=x^8+a^3x^2
+- c(x)=a^11x^7+a^8x^5+a^10x^4+a^4x^3+a^14x^2+a^8x+a^12
+- e(x)=x^8+x^2
 
 - r(x)=**x^8**+a^11x^7+a^8x^5+a^10x^4+a^4x^3+**a^3x^2**+a^8x+a^12
 
-Now let's compute the **syndrome components, defined as S_i=r(x=a^i), for i in {1, 2, ..., 2t==6}**. Remember that r(x) should have roots {a, a^2, ..., a^2t}. If there were no error in r(x), we should have S_i==0 for all i. But actually,
+Be aware that for the coefficient of x^2, we do have a^14+1==a^3 (watch the construction of GF(P^m) to check it). Now let's compute the **syndrome components, defined as S_i=r(x=a^i), for i in {1, 2, ..., 2t==6}**. Remember that r(x) should have roots {a, a^2, ..., a^2t}. If there were no error in r(x), we should have S_i==0 for all i. But actually,
 
 - S1=r(a)==1
 - S2=r(a^2)==1
@@ -153,11 +153,13 @@ Now let's compute the **syndrome components, defined as S_i=r(x=a^i), for i in {
 - S5=r(a^5)==0
 - S6=r(a^6)==a^10
 
-Now we define
+Now we define the **syndrome polynomial**:
 
 - S(x)=S1+S2x+...+S_{2t}x^(2t-1)=a^10x5+x^3+a^5x^2+x+1
 
-Then we are going to find an error locator polynomial s(x) (often \sigma (x) in other materials). Divide x^(2t) by S(x) to get a quotient q(x) and a residue r1(x)
+Then we are going to find an **error locator polynomial s(x)** (often \sigma (x) or \Lambda (x) in other materials). Divide x^(2t) by S(x), then S(x) by the 1st remainder r1(x), then r1(x) by r2(x), ..., until the degree of r_i <= t.
+
+Divide x^(2t) by S(x) to get a quotient q(x) and the remainder r1(x)
 
 - x^6 = (a^5 x)s(x) + (a^5x^4+a^10x^3+a^5x^2+a^5x); q1(x)=a^5x, r1(x)=a^5x^4+a^10x^3+a^5x^2+a^5x
 
@@ -165,4 +167,40 @@ The degree of r1(x) is 4, greater than t=3. In this case we need to keep dividin
 
 - S(x)=(a^5x+a^10)r1 + 1; q2(x)=a^5x+a^10, r2(x)=1
 
-The degree of r2(x) is 0, less than t=3
+The degree of r2(x) is 0, less than t=3. Stop here. Now put the previous results into the following form:
+
+- S(x)s(x)=A(x)+x^(2t)B(x)
+
+Given that
+
+- r1(x)=x^6+q1(x)S(x)
+- r2(x)=S(x)+q2(x)r1(x)
+
+We can combine the equations about remainders to form a single equation
+
+- r2(x)=x^6q2(x)+S(x)(1+q1(x)q2(x))
+
+Equivalently
+
+- 1=x^6(a^5x+a^10)+S(x)(a^10x^2+x+1)
+
+Further, rewrite the equation in the form of S(x)s(x)=A(x)+x^(2t)B(x):
+
+- S(x)(a^10x^2+x+1)=1+x^6(a^5x+a^10)
+
+This means that the error locator polynomial is
+
+-  s(x)=a^10x^2+x+1
+
+Now we try to find the roots of s(x). The answer is simply:
+
+- s(x)=(a^2x-1)(a^8x-1)
+
+We actually employ **Chien search** to find the roots. This is exactly a brute-force algorithm that I am not going to explain in detail. You can just try all of a^0, a^1, ..., a^(2t-2) if you do not want to learn about it. The roots of s(x) indicates that error occurs in x^8 and x^2 items of r(x).
+
+Finally we solve a set of degree-1 equations to find the error values.
+
+- e1a^2+e2a^8=S1
+- e1(a^2)^2+e2(a^8)^2=S2
+
+The solution is e1=1 and e2=1, and e(x) assumed by us is x^8+x^2. 
