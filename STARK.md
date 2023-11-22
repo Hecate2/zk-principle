@@ -1,8 +1,10 @@
 ### Reed-Solomon (RS) Codes
 
-In [SNARK.md](SNARK.md), we discussed R1CS that forms polynomials to represent general problems or computer functions. Now in STARK, we are going to alternatively encode the computer function into a polynomial, with Reed-Solomon codes. RS codes, utilizing polynomials (in a way quite different from those in SNARK), are a set of various encoding methods that can correct errors if there is some in the encoded result. 
+In [SNARK.md](SNARK.md), we discussed R1CS that forms polynomials to represent general problems or computer functions. Now in STARK, we are going to still encode the computer function into a polynomial, with Reed-Solomon codes. RS codes, utilizing polynomials (in a way quite different from those in SNARK), are a set of various encoding methods that can correct errors if there is some in the encoded result. 
 
-#### Polynomials over Galois field (GF)
+The following sections can be very confusing. You may skip most of them and just read the simple version using only Lagrange interpolation.
+
+#### Polynomials over Galois field (GF) (Optional)
 
 Remember that in Galois field GF(n), we always play `mod n` after arithmetic operations, in order for the result to be a non-negative integer less than n. Now, to define a polynomial c0+c1x+c2x^2+...+c_d x^d over GF(n), we just require **the coefficients of the polynomial to be less than n**:
 
@@ -14,13 +16,13 @@ And let's watch some amazing arithmetic phenomena in such polynomials. Consider 
 
 In RS codes, we will record the coefficients of a polynomial over GF(a_large_prime_number).
 
-#### Extension fields
+#### Extension fields (Optional)
 
 For GF(P), its extension fields are simply GF(P^m), where P is a prime number, and m = 2,3,4,...
 
 Typically we are interested in P==2 in this material.
 
-#### GF of polynomials instead of numbers; primitive polynomial of degree m over GF(P), as a generator of GF(P^m) (of polynomials)
+#### GF of polynomials instead of numbers; primitive polynomial of degree m over GF(P), as a generator of GF(P^m) (of polynomials) (Optional)
 
 In [SNARK.md](SNARK.md) we learned to play `mod n` in a GF of integers. Also, remember the generator on an elliptic curve (EC), which can generate many points (sometimes all of the points) on the curve by adding itself, and finally return to itself. This process generates a field of EC points. Similarly, a primitive polynomial can serve as the modulus of a self-multiplying element, helping construct P^m unique elements of polynomials. We can also play `mod a_polynomial` in a GF of polynomials.
 
@@ -52,7 +54,7 @@ Wait one! Each element should `mod p(x)` before they are inserted. Therefore, we
 
 Stop here! We got `a^14 mod p(x) ==x^3+1`. If we compute `a^15 mod p(x)`, we get `1`, and the generation process returns to the beginning. And you can check that our set has included all polynomials over GF(2) with degree <= 3.
 
-#### Isomorphic implementations of GF(P^m) of polynomials
+#### Isomorphic implementations of GF(P^m) of polynomials (Optional)
 
 In the previous subsection we chose a(x)=x. Yet we could choose another a(x) over GF(2) with degree <=3, since the generation process is ultimately circular. This is similar to choosing another generator point on an EC. For example, if we choose a(x)=x^2, the polynomial set of GF(2^m) becomes:
 
@@ -108,7 +110,7 @@ When we talk about q-ary codes (**replacing q with a specific integer**), we mea
 
 But when we talk about P-ary codes (without replacing P), we are emphasizing prime-number-ary codes. Binary codes are the simplest cases of P-ary codes.
 
-#### RS codes encoding
+#### RS codes encoding (Optional)
 
 A systematic RS codeword of length n includes k raw data bits, and n-k==2t **parity-check** bits, in order to recover errors no more than t bits. Given the raw message m(x) (of degree k-1), we generate the codeword c(x) with
 
@@ -121,7 +123,7 @@ where g(x) is a publicly known generator polynomial.
 
 a is a(x), a generator of GF(P^m) discussed before. In this way we require g(x) to have roots {a, a^2, ..., a^(2t)}. Just be aware that do not pick an a(x) making g(x)==0. With the coefficient of x^(2t) as 1 in g(x), we can copy the coefficients of m(x) to x^(n-1), x^(n-2), ..., x^(2t), making the codeword systematic. Now just transmit the (binary) coefficients of c(x) through an unreliable channel.
 
-#### RS codes decoding (Euclidean division algorithm)
+#### RS codes decoding (Euclidean division algorithm) (Optional)
 
 Now it's time to decode the codeword r(x) after receiving it from an unreliable channel. We introduce a random error polynomial e(x) of degree n over GF(2), with no more than t coefficients being 1:
 
@@ -137,7 +139,11 @@ Assume that in a binary (15,9) RS coding, we have 15 bits in a word with 9 bits 
 
 - g(x)=(x-a)(x-a^2)...(x-a^6)=x^6+a^10x^5+a^14x^4+a^4x^3+a^6x^2+a^9x+a^6
 
-Additionally, let's use m(x)=a^11 x. Then we have c(x) and an assumed e(x) along with r(x)
+Additionally, let's use 
+
+- m(x)=a^11 x
+
+Then we have c(x) and an assumed e(x) along with r(x)
 
 - c(x)=a^11x^7+a^8x^5+a^10x^4+a^4x^3+a^14x^2+a^8x+a^12
 - e(x)=x^8+x^2
@@ -204,3 +210,29 @@ Finally we solve a set of degree-1 equations to find the error values.
 - e1(a^2)^2+e2(a^8)^2=S2
 
 The solution is e1=1 and e2=1, and e(x) assumed by us is x^8+x^2. 
+
+#### RS code using symbol erasure (Optional)
+
+Let's assume an intelligent signal receiver that can identify whether the symbols in a received codeword are reliable enough. When a symbol is probably unreliable, the receiver erases the symbol (leaving it blank) and leave the problem to the decoder. This is actually marking the errors in a codeword. With symbol erasure (assuming no error in non-erased symbols), we can let RS code work even when 2*t* error+erasure occur. I am not going to explain the details any more, because it is quite away from our main topic STARK.
+
+#### Very simple version of RS erasure code using only Lagrange interpolation
+
+Now you are going to transmit an array [4, 5, 3], but the transmission channel may introduce random erasure (but no error). What if we need our code to correct 1 erasure?
+
+Remember that with Lagrange interpolation, we can generate a polynomial
+
+- p(x)=-1.5x^2+2.5x+4
+
+with
+
+- p(0)==4
+- p(1)==5
+- p(2)==3
+
+Now that
+
+- p(3)==-2
+
+We can actually send the array [4,5,3,-2], and ask the receiver to run Lagrange interpolation again. Evidently, any single erasure does not prevent us to recover p(x) with only 3 points. 
+
+Generally, when you want to send *k* symbols that are resistant to 2*t* erasures, you can always use Lagrange interpolation on the k symbols to get a polynomial p(x) of degree k-1, then evaluate additional 2t values of the polynomial, and send all the k symbols along with the 2t additional values. As long as there are no more than 2t erasures, the receiver can recover p(x) and then the whole message.
