@@ -580,3 +580,4 @@ Quotient of P/T = 33*x^2 + 33*x + 10
 Remainder of P/T = 0
 ```
 
+Now you can just use all the SNARK tools in previous sections for ZKP.

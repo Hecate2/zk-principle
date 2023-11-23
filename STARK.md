@@ -1,6 +1,6 @@
 ### Reed-Solomon (RS) Codes
 
-In [SNARK.md](SNARK.md), we discussed R1CS that forms polynomials to represent general problems or computer functions. Now in STARK, we are going to still encode the computer function into a polynomial, with Reed-Solomon codes. RS codes, utilizing polynomials (in a way quite different from those in SNARK), are a set of various encoding methods that can correct errors if there is some in the encoded result. 
+In [SNARK.md](SNARK.md), we discussed R1CS that forms polynomials to represent general problems or computer functions, and some cryptographic tools to prove that you know the polynomial. Now in STARK, we are going to still encode the computer function into a polynomial, with Reed-Solomon codes. RS codes, utilizing polynomials (in a way quite different from those in SNARK), are a set of various encoding methods that can correct errors if there is some in the encoded result. 
 
 The following sections can be very confusing. You may skip most of them and just read the simple version using only Lagrange interpolation.
 
@@ -211,7 +211,7 @@ Finally we solve a set of degree-1 equations to find the error values.
 
 The solution is e1=1 and e2=1, and e(x) assumed by us is x^8+x^2. 
 
-#### RS code using symbol erasure (Optional)
+#### RS code using symbol erasure
 
 Let's assume an intelligent signal receiver that can identify whether the symbols in a received codeword are reliable enough. When a symbol is probably unreliable, the receiver erases the symbol (leaving it blank) and leave the problem to the decoder. This is actually marking the errors in a codeword. With symbol erasure (assuming no error in non-erased symbols), we can let RS code work even when 2*t* error+erasure occur. I am not going to explain the details any more, because it is quite away from our main topic STARK.
 
@@ -236,3 +236,22 @@ Now that
 We can actually send the array [4,5,3,-2], and ask the receiver to run Lagrange interpolation again. Evidently, any single erasure does not prevent us to recover p(x) with only 3 points. 
 
 Generally, when you want to send *k* symbols that are resistant to 2*t* erasures, you can always use Lagrange interpolation on the k symbols to get a polynomial p(x) of degree k-1, then evaluate additional 2t values of the polynomial, and send all the k symbols along with the 2t additional values. As long as there are no more than 2t erasures, the receiver can recover p(x) and then the whole message.
+
+### Generating polynomials from practical problems
+
+We discussed generator of GF(P^m) (of polynomials) in a previous section. With such a powerful tool, we can represent a problem in another way, instead of using R1CS. We are going to use the example of Fibonacci sequence, described in the articles by StarkWare. We use g instead of a (\alpha) to represent the generator of GF(P^m).
+
+- f(1)-1==0  // first element is 1
+- f(g)-1==0  // second element is 1
+- for *x* in 1, g, ..., g^509, f(xg^2)-f(xg)-f(x)==0  // each element is sum of previous 2 elements
+- f(g^511)==62215  // fact: 512th element is 62215
+
+### Degree adjustment
+
+Let's adjust the highest degree of **each** constraint polynomial to the power of 2, for the convenience of following steps.
+
+### Divide and conquer
+
+For a polynomial representing a practical problem, the degree can be millions. We are now introducing a method to decrease the complexity: splitting the polynomial into even-degree and odd-degree terms. 
+
+### Fast RS Interactive Oracle Proofs (IOP) of Proximity (IOPP)  (FRI)
