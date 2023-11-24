@@ -288,14 +288,83 @@ Verifier:
 
 What if Alice is not honest, where she uses a Q(P(x))!=S(x)T(x)? Given that degree(Q(P(x)))==10^7, there are at most 10^7 intersections between Q(P(x)) and S(x)T(x). For a randomly picked x==r in range (10^6, 10^9], the probability for Q(P(r))==S(r)T(r) is at most (10^7)/(10^9)==0.01. The verifier can repeat with a few different *r* to quickly reduce the probability of prover's cheating.
 
-But there is still a method for the prover to cheat.
+But there is still a method for the prover to cheat. Because we did not actually limit the degree of P(x), the prover can choose a secret P(x) with degree > 10^6. Then the prover can interpolate anything that satisfies Q(P(x))==S(x)T(x). We are going to use low degree testing to limit degree(P(x))<=10^6.
 
-#### Low degree testing (LDT)
+### Low degree testing (LDT)
 
+#### Naive version: direct test
 
+In this version we ensure P(x) to have degree <=d with d+1 queries
 
-### Fast RS Interactive Oracle Proofs (IOP) of Proximity (IOPP)  (FRI)
+Verifier:
+
+- Pick random values a1, a2, ..., a_10^6 and send them to the prover
+
+Prover:
+
+- return P(a1), P(a2), ..., P(a_10^6)
+
+Verifier:
+
+- Find the Lagrange interpolation of P(a1), P(a2), ..., P(a_10^6)
+- Pick a random value b and send it to the prover
+
+Prover:
+
+- return P(b)
+
+Verifier:
+
+- Check whether P(b) is correct
+
+Well, this is simply asking the prover to help recover the whole information about P(x), which is neither zk nor efficient. Now we are going to introduce the most magnificent tool in zk-STARK to run LDT with O(log(d)) queries.
 
 #### Divide and conquer
 
-For a polynomial representing a practical problem, the degree can be millions. We are now introducing a method to decrease the complexity: splitting the polynomial into even-degree and odd-degree terms. 
+We split a polynomial into even-degree and odd-degree terms. For example, with an f(x) to be run LDT on,
+
+- f(x)=a0+a1x+a2x^2+a3x^3+a4x^4+a5x^5
+
+we can derive two polynomials
+
+- g(x)=a0+a2x+a4x^2
+- h(x)=a1+a3x+a5x^2
+
+Then we can write
+
+- f(x)=g(x^2)+xh(x^2)
+
+where degree(g(x)), degree(h(x)) <= degree(f(x))/2. Within log(d) steps, we can reach results of constant polynomials. Also, we need some methods to hide the original f(x) and achieve zk. Therefore, we finally form a protocol called FRI.
+
+#### Fast RS Interactive Oracle Proofs (IOP) of Proximity (IOPP)  (FRI)
+
+Commit phase: (the word "commit" originates from polynomial commitment)
+
+- Prover
+  - Split the initial f0(x) into even- and odd-degree terms g0(x) and h0(x), such that
+    - f0(x)=g0(x^2)+xh0(x^2)
+- Verifier
+  - pick a random value a0, send it to the prover
+- Prover
+  - compute f1(x)=g0(x)+a0h0(x), of degree <= degree(f0(x))/2
+- Repeat the steps above, until a constant polynomial is obtained. Do not forget any f(x), g(x) and h(x).
+- Prover
+  - send the constant value to the verifier
+
+Query phase (we want to ensure that the prover did not cheat):
+
+- Verifier:
+  - pick a random value z and send it to the prover
+- Prover:
+  - return f0(z), f0(-z) and f1(z^2)
+- Verifier
+  - Compute g0(z^2) and h0(z^2), by solving 2 equations below:
+    - f0(z)=g0(z^2)+zh0(z^2)
+    - f0(-z)=g0(z^2)-zh0(z^2)
+  - Compute f1(z^2)=g0(z^2)+a0h0(z^2). Check whether it equals the f1(z^2) returned by the prover.
+  - Repeat all the steps above for all f(z^2). Check whether the final constant is correct.
+
+FRI seems to be solid, but in its original paper, there is a rigorous proof that the verifier can identify a malicious prover at a probability of only 10%. This is because a practical polynomial usually has too many zero coefficients, and the prover often reach a final zero polynomial with the random values picked. We have to repeat it many times to reduce the probability to practically zero. 
+
+### Non-interactive zk-STARK
+
