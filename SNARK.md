@@ -354,7 +354,7 @@ The process is very simple. Each participant of the computation just provide his
 
 We now reaches the goal of **succinct non-interactive argument of knowledge (SNARK)**. Congratulations on being a pro of **zk-SNARK**.
 
-### Representing a general practical problem with a polynomial
+### Arithmetization: Representing a general practical problem with a polynomial
 
 What ZKP does is to prove that a secret polynomial s(x) does have value s(r) when x==r. But in practice, we need to prove that we know a secret solution to a public problem, without revealing the secret solution. We are now going to discuss how to translate the problem and the solution to polynomials. 
 

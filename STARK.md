@@ -2,7 +2,7 @@
 
 In [SNARK.md](SNARK.md), we discussed R1CS that forms polynomials to represent general problems or computer functions, and some cryptographic tools to prove that you know the polynomial. Now in STARK, we are going to still encode the computer function into a polynomial, with Reed-Solomon codes. RS codes, utilizing polynomials (in a way quite different from those in SNARK), are a set of various encoding methods that can correct errors if there is some in the encoded result. 
 
-The following sections can be very confusing. You may skip most of them and just read the simple version using only Lagrange interpolation.
+The following sections can be very confusing. **You may skip most of them and just read the simple version using only Lagrange interpolation.**
 
 #### Polynomials over Galois field (GF) (Optional)
 
@@ -215,7 +215,7 @@ The solution is e1=1 and e2=1, and e(x) assumed by us is x^8+x^2.
 
 Let's assume an intelligent signal receiver that can identify whether the symbols in a received codeword are reliable enough. When a symbol is probably unreliable, the receiver erases the symbol (leaving it blank) and leave the problem to the decoder. This is actually marking the errors in a codeword. With symbol erasure (assuming no error in non-erased symbols), we can let RS code work even when 2*t* error+erasure occur. I am not going to explain the details any more, because it is quite away from our main topic STARK.
 
-#### Very simple version of RS erasure code using only Lagrange interpolation
+#### Domain extension: very simple version of RS erasure code using only Lagrange interpolation
 
 Now you are going to transmit an array [4, 5, 3], but the transmission channel may introduce random erasure (but no error). What if we need our code to correct 1 erasure?
 
@@ -237,21 +237,65 @@ We can actually send the array [4,5,3,-2], and ask the receiver to run Lagrange 
 
 Generally, when you want to send *k* symbols that are resistant to 2*t* erasures, you can always use Lagrange interpolation on the k symbols to get a polynomial p(x) of degree k-1, then evaluate additional 2t values of the polynomial, and send all the k symbols along with the 2t additional values. As long as there are no more than 2t erasures, the receiver can recover p(x) and then the whole message.
 
-### Generating polynomials from practical problems
+### Arithmetization
 
-We discussed generator of GF(P^m) (of polynomials) in a previous section. With such a powerful tool, we can represent a problem in another way, instead of using R1CS. We are going to use the example of Fibonacci sequence, described in the articles by StarkWare. We use g instead of a (\alpha) to represent the generator of GF(P^m).
+Let's play with a simple example: Alice wants to prove it to Bob that she has 10^6 integers within range 0, 1, 2, ..., 9. It's easy to form the constraints of the problem:
 
-- f(1)-1==0  // first element is 1
-- f(g)-1==0  // second element is 1
-- for *x* in 1, g, ..., g^509, f(xg^2)-f(xg)-f(x)==0  // each element is sum of previous 2 elements
-- f(g^511)==62215  // fact: 512th element is 62215
+- for 1<=i<=10^6, A_i(A_i-1)(A_i-2)...(A_i-9)==0
 
-### Degree adjustment
+Then, Alice finds a Lagrange interpolation P(x) for her 10^**6** integers, where x ranges from 1 to 10^**9**. Yes! Note that x in P(x) ranges from 1 to 10^**9**, instead of 10^**6**! Now surely,
 
-Let's adjust the highest degree of **each** constraint polynomial to the power of 2, for the convenience of following steps.
+- for 1<=x<=10^**6**, P(x)(P(x)-1)...(P(x)-9)==0
 
-### Divide and conquer
+Let's name Q(P(x))=P(x)(P(x)-1)...(P(x)-9). Then surely,
 
-For a polynomial representing a practical problem, the degree can be millions. We are now introducing a method to decrease the complexity: splitting the polynomial into even-degree and odd-degree terms. 
+- degree(Q(P(x)))==10^7  (We can always compute the degree of Q(x), based on the constraints)
+- Q(P(1))==Q(P(2))==...==Q(P(10^6))==0
+
+Now let's name a public polynomial T(x)=(x-1)(x-2)...(x-10^6). Because P(x) is a Lagrange interpolation on [1, 10^6], Q(P(x)) has roots 1, 2, ..., 10^6. Therefore, Alice can convert the problem to another form: she wants to prove that she knows a secret polynomial S(x), such that
+
+- for 1<=x<=10^**9**, Q(P(x))=S(x)T(x)
+- degree(S(x))==10^7-10^6
+
+Then it's simple for Bob to verify the claim.
+
+### Interactive zk-STARK
+
+Prover preparation:
+
+- for x in range [1, 10^**9**], evaluate P(x) and S(x)
+- Build a merkle tree
+  - The leaf nodes are P(x) and S(x). The initial non-leaf nodes are hash(P(x), S(x)) for x in [1, 10^**9**]
+  - We, in practice, actually pick a number of power of 2, instead of 10^9 in this example
+
+Verifier:
+
+- pick a random value *r* (in range (10^**6**, 10^**9**])
+  - Do not pick any *r* in [1, 10^6]. This reveals the original value of P(x), breaking the ZK requirement
+
+- send *r* to the prover
+
+Prover:
+
+- return P(r), S(r), root of the merkle tree, and the path (all the nodes of hashes along the way) to reach the root of the merkle tree, starting from hash(P(r), S(r))
+
+Verifier:
+
+- Check whether we can get the correct root through the merkle tree
+- Check whether Q(P(r))==S(r)T(r)
+
+#### Soundness?
+
+What if Alice is not honest, where she uses a Q(P(x))!=S(x)T(x)? Given that degree(Q(P(x)))==10^7, there are at most 10^7 intersections between Q(P(x)) and S(x)T(x). For a randomly picked x==r in range (10^6, 10^9], the probability for Q(P(r))==S(r)T(r) is at most (10^7)/(10^9)==0.01. The verifier can repeat with a few different *r* to quickly reduce the probability of prover's cheating.
+
+But there is still a method for the prover to cheat.
+
+#### Low degree testing (LDT)
+
+
 
 ### Fast RS Interactive Oracle Proofs (IOP) of Proximity (IOPP)  (FRI)
+
+#### Divide and conquer
+
+For a polynomial representing a practical problem, the degree can be millions. We are now introducing a method to decrease the complexity: splitting the polynomial into even-degree and odd-degree terms. 
