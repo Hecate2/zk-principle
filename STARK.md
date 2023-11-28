@@ -259,6 +259,8 @@ Now let's name a public polynomial T(x)=(x-1)(x-2)...(x-10^6). Because P(x) is a
 
 Then it's simple for Bob to verify the claim.
 
+**In practice, we often use FFT instead of Lagrange interpolation, because FFT takes O(nlogn) time, while Lagrange interpolation takes O(n^2).**
+
 ### Interactive zk-STARK
 
 Prover preparation:
@@ -364,7 +366,12 @@ Query phase (we want to ensure that the prover did not cheat):
   - Compute f1(z^2)=g0(z^2)+a0h0(z^2). Check whether it equals the f1(z^2) returned by the prover.
   - Repeat all the steps above for all f(z^2). Check whether the final constant is correct.
 
-FRI seems to be solid, but in its original paper, there is a rigorous proof that the verifier can identify a malicious prover at a probability of only 10%. This is because a practical polynomial usually has too many zero coefficients, and the prover often reach a final zero polynomial with the random values picked. We have to repeat it many times to reduce the probability to practically zero. 
+FRI seems to be solid, but in its original paper, there is a rigorous proof that the verifier can identify a malicious prover at a probability of only 10%. This is because a practical polynomial usually has too many zero coefficients, and the prover often reach a final zero polynomial with the random values picked. We have to repeat FRI for many (hundreds of) times to reduce the probability to practically zero. 
 
 ### Non-interactive zk-STARK
+
+Armed with the experience of achieving non-interactive zk-SNARK, we should now understand that we need to eliminate all subjective parameters offered by the verifier. We use Fiat-Shamir transformation for a non-interactive zk-STARK. I will not explain the details, but the idea is simple: hash all the public parameters about the problem to get the random value. Typically we use MiMC as the hash function.
+
+- In interactive zk-STARK, we hash the root of the merkle tree to replace the random number chosen by the verifier.
+- In FRI, we can hash(previous_hash_result, values_returned_by_prover_if_there_is_any)
 
