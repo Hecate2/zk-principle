@@ -370,7 +370,7 @@ FRI seems to be solid, but in its original paper, there is a rigorous proof that
 
 ### Non-interactive zk-STARK
 
-Armed with the experience of achieving non-interactive zk-SNARK, we should now understand that we need to eliminate all subjective parameters offered by the verifier. We use Fiat-Shamir transformation for a non-interactive zk-STARK. I will not explain the details, but the idea is simple: hash all the public parameters about the problem to get the random value. Typically we use MiMC as the hash function.
+Armed with the experience of achieving non-interactive zk-SNARK, we should now understand that we need to eliminate all subjective parameters offered by the verifier. We use Fiat-Shamir transformation for a non-interactive zk-STARK. I will not explain the details, but the idea is simple: hash all the public parameters about the problem to get the random value. Typically we use Rescue or MiMC as the hash function in practice.
 
 - In interactive zk-STARK, we hash the root of the merkle tree to replace the random number chosen by the verifier.
 - In FRI, we can hash(previous_hash_result, values_returned_by_prover_if_there_is_any)
