@@ -261,6 +261,10 @@ Then it's simple for Bob to verify the claim.
 
 **In practice, we often use FFT instead of Lagrange interpolation, because FFT takes O(nlogn) time, while Lagrange interpolation takes O(n^2).**
 
+#### Degree adjustment
+
+For the sake of computational convenience, we want the degrees of each constraint to be (a power of 2) - 1 (e.g. 511, 1023, 2^32 - 1, ...). we multiply each original constraint polynomial by (ax^n+b), where a and b are random constants chosen by the verifier for each constraint, and n is a proper number to make the degree be (a power of 2) - 1. In this tutorial we can forget degree adjustment. 
+
 ### Interactive zk-STARK
 
 Prover preparation:
